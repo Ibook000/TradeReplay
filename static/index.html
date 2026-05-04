@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Trade Replay</title>
+    <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=2">
+</head>
+<body>
+    <div class="app">
+        <div class="sidebar">
+            <div class="header">
+                <div class="header-top">
+                    <h1>Trade Replay</h1>
+                    <span class="header-badge" id="totalBadge">--</span>
+                </div>
+                <div class="symbol-selector">
+                    <select id="symbolSelect">
+                        <option>Loading...</option>
+                    </select>
+                </div>
+                <div class="controls">
+                    <select id="daysSelect">
+                        <option value="7">7D</option>
+                        <option value="14">14D</option>
+                        <option value="30" selected>30D</option>
+                        <option value="60">60D</option>
+                        <option value="90">90D</option>
+                        <option value="180">180D</option>
+                        <option value="365">1Y</option>
+                    </select>
+                    <button id="refreshBtn">Refresh</button>
+                    <button id="statsBtn" class="stats-toggle">Stats</button>
+                </div>
+                <div class="stats" id="stats"></div>
+            </div>
+            <div class="trade-list" id="tradeList">
+                <div class="loading"><div class="spinner"></div>Loading...</div>
+            </div>
+        </div>
+        <div class="main">
+            <div class="chart-header" id="chartHeader">
+                <span class="info">Select a trade to view details</span>
+            </div>
+            <div class="chart-container">
+                <div id="chart"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Panel (overlay) -->
+    <div class="stats-panel" id="statsPanel">
+        <div class="stats-panel-header">
+            <h2>Statistics</h2>
+            <button class="close-btn" id="closeStatsBtn">&times;</button>
+        </div>
+        <div class="stats-panel-content" id="statsContent">
+            <!-- Filled by JS -->
+        </div>
+    </div>
+
+    <script src="/static/js/utils.js?v=2"></script>
+    <script src="/static/js/api.js?v=2"></script>
+    <script src="/static/js/chart.js?v=2"></script>
+    <script src="/static/js/trades.js?v=2"></script>
+    <script src="/static/js/app.js?v=2"></script>
+</body>
+</html>
