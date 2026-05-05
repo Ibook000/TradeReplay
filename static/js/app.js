@@ -282,6 +282,12 @@ const App = {
     },
 
     formatAi(text) {
+        // Try JSON parse first
+        try {
+            const d = JSON.parse(text);
+            return this.renderAiJson(d);
+        } catch (e) { /* not JSON, fall through to plain text */ }
+        // Plain text fallback
         return text
             .replace(/^###? (.*$)/gm, '<h3>$1</h3>')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -291,6 +297,66 @@ const App = {
             .replace(/(<li>.*<\/li>)+/gs, '<ul>$&</ul>')
             .replace(/(-\d+\.?\d*)/g, '<span class="highlight">$1</span>')
             .replace(/(\+\d+\.?\d*)/g, '<span class="positive">$1</span>');
+    },
+
+    renderAiJson(d) {
+        const sevColor = { high: '#ff3d3d', medium: '#fbbf24', low: '#5a5a6e' };
+        const sevLabel = { high: 'HIGH', medium: 'MED', low: 'LOW' };
+        let html = '';
+
+        // Summary + Score
+        if (d.summary) {
+            const score = d.score ?? '--';
+            const scoreColor = score >= 60 ? '#00c853' : score >= 40 ? '#fbbf24' : '#ff3d3d';
+            html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="font-size:28px;font-weight:700;font-family:monospace;color:${scoreColor};">${score}</div>
+                <div style="flex:1;">
+                    <div style="font-size:13px;font-weight:600;color:#e1e1e6;">${d.summary}</div>
+                    <div style="font-size:9px;color:#5a5a6e;margin-top:2px;">WEEKLY SCORE</div>
+                </div>
+            </div>`;
+        }
+
+        // Top Issues
+        if (d.top_issues?.length) {
+            html += `<h3 style="font-size:10px;color:#ff3d3d;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px;">Top Issues</h3>`;
+            for (const issue of d.top_issues) {
+                const c = sevColor[issue.severity] || '#5a5a6e';
+                html += `<div style="background:rgba(255,61,61,0.06);border-left:3px solid ${c};padding:8px 10px;margin-bottom:6px;border-radius:0 4px 4px 0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:11px;font-weight:600;color:#e1e1e6;">${issue.title}</span>
+                        <span style="font-size:8px;font-weight:700;color:${c};background:${c}22;padding:1px 5px;border-radius:2px;">${sevLabel[issue.severity] || issue.severity}</span>
+                    </div>
+                    <div style="font-size:10px;color:#8a8a9a;margin-top:4px;line-height:1.5;">${issue.detail}</div>
+                </div>`;
+            }
+        }
+
+        // Repeated Mistakes
+        if (d.repeated_mistakes?.length) {
+            html += `<h3 style="font-size:10px;color:#fbbf24;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px;">Repeated Mistakes</h3>`;
+            for (const m of d.repeated_mistakes) {
+                html += `<div style="background:rgba(251,191,36,0.06);border-left:3px solid #fbbf24;padding:8px 10px;margin-bottom:6px;border-radius:0 4px 4px 0;">
+                    <div style="font-size:11px;font-weight:600;color:#e1e1e6;">${m.pattern}</div>
+                    <div style="font-size:10px;color:#8a8a9a;margin-top:4px;line-height:1.5;">${m.evidence}</div>
+                </div>`;
+            }
+        }
+
+        // Action Items
+        if (d.action_items?.length) {
+            html += `<h3 style="font-size:10px;color:#00c853;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px;">Action Items</h3>`;
+            const sorted = [...d.action_items].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+            for (const item of sorted) {
+                const p = item.priority || '-';
+                html += `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;">
+                    <span style="font-size:9px;font-weight:700;color:#0f172a;background:#00c853;padding:1px 5px;border-radius:2px;min-width:16px;text-align:center;">P${p}</span>
+                    <span style="font-size:11px;color:#e1e1e6;line-height:1.5;">${item.action}</span>
+                </div>`;
+            }
+        }
+
+        return html || text;
     },
 
     async loadSymbols() {

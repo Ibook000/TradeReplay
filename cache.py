@@ -1,6 +1,7 @@
 """Trade data cache — PostgreSQL persistence, background refresh."""
 
 import time
+import re
 import threading
 from pathlib import Path
 
@@ -187,19 +188,31 @@ def _run_weekly_ai_analysis():
         hold = t.get("hold_hours", 0)
         lev = t.get("leverage", 1)
         trade_summary += f"{i}. {d.upper()} {lev}x | Entry: {entry:.2f} -> Exit: {exit_p:.2f} | Hold: {hold:.1f}h | PnL: {pnl:+.2f} USDT\n"
-    prompt = f"""你是一个犀利的交易教练，专门分析合约交易数据，用直接、尖锐的语言指出问题，鞭策交易者改进。
-
-请分析以下一周的交易数据，用中文回答，要求：
-1. 直接指出最严重的问题，不要客套
-2. 用数据说话，引用具体数字
-3. 指出重复犯的错误
-4. 给出可执行的改进建议
-5. 语气要犀利，像教练骂醒学员一样
-
+    prompt = f"""你是一个犀利的交易教练，专门分析合约交易数据。请用JSON格式输出分析结果。
+分析以下一周的交易数据：
 {trade_summary}
 
-请开始你的毒舌分析："""
+严格按以下JSON格式输出，不要输出任何其他内容：
+{{
+  "summary": "一句话总评，20字以内，要犀利",
+  "score": 0到100的整数评分,
+  "top_issues": [
+    {{"title": "问题标题", "detail": "用数据说明这个问题，引用具体数字", "severity": "high或medium或low"}}
+  ],
+  "repeated_mistakes": [
+    {{"pattern": "错误模式名称", "evidence": "具体交易数据证据"}}
+  ],
+  "action_items": [
+    {{"action": "可执行的具体建议", "priority": 1到5的优先级}}
+  ]
+}}
 
+要求：
+1. top_issues 最多5个，按严重程度排序
+2. repeated_mistakes 最多3个
+3. action_items 最多5个，按优先级排序
+4. 语气犀利直接，不要客套
+"""
     try:
         import httpx as _httpx
         with _httpx.Client(timeout=60.0) as client:
@@ -209,15 +222,27 @@ def _run_weekly_ai_analysis():
                 json={
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": "你是一个犀利的交易教练，专门分析合约交易数据，用直接、尖锐的语言指出问题，鞭策交易者改进。"},
+                        {"role": "system", "content": "你是一个犀利的交易教练。必须严格输出合法JSON，不要输出任何其他文本、markdown或代码块标记。"},
                         {"role": "user", "content": prompt}
                     ],
                     "temperature": 0.7,
-                    "max_tokens": 1500
+                    "max_tokens": 2000
                 }
             )
             if resp.status_code == 200:
-                analysis = resp.json()["choices"][0]["message"]["content"]
+                import json as _json
+                raw = resp.json()["choices"][0]["message"]["content"].strip()
+                # Strip markdown code block if present
+                if raw.startswith("```"):
+                    raw = re.sub(r'^```(?:json)?\s*', '', raw)
+                    raw = re.sub(r'\s*```$', '', raw)
+                # Validate JSON
+                try:
+                    parsed = _json.loads(raw)
+                    analysis = _json.dumps(parsed, ensure_ascii=False)
+                except _json.JSONDecodeError:
+                    print(f"[AI] Response is not valid JSON, saving as-is", flush=True)
+                    analysis = raw
                 save_ai_analysis("ALL", week_start, week_end,
                                  len(week_trades), total_pnl, win_rate, analysis)
                 print(f"[AI] Weekly analysis saved for {week_start}", flush=True)
