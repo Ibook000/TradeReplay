@@ -2,6 +2,7 @@
 
 const App = {
     currentSymbol: '',  // Active symbol (e.g. 'BTC')
+    currentExchange: '',  // Active exchange filter ('' = all, 'OKX', 'Bybit')
     allSymbols: [],      // Available symbols from API
 
     /**
@@ -19,6 +20,7 @@ const App = {
     bindEvents() {
         document.getElementById('refreshBtn').addEventListener('click', () => this.loadTrades());
         document.getElementById('daysSelect').addEventListener('change', () => this.loadTrades());
+        document.getElementById('exchangeSelect').addEventListener('change', () => this.onExchangeChange());
 
         // Stats panel toggle
         document.getElementById('statsBtn').addEventListener('click', () => this.toggleStatsPanel());
@@ -30,6 +32,14 @@ const App = {
     },
 
     /**
+     * Handle exchange filter change
+     */
+    onExchangeChange() {
+        this.currentExchange = document.getElementById('exchangeSelect').value;
+        this.loadTrades();
+    },
+
+    /**
      * Load available symbols and render dropdown
      */
     async loadSymbols() {
@@ -37,7 +47,6 @@ const App = {
         sel.innerHTML = '<option>Loading...</option>';
 
         try {
-            const days = document.getElementById('daysSelect').value;
             const data = await API.fetchSymbols(180);
             this.allSymbols = data.symbols || [];
 
@@ -218,7 +227,7 @@ const App = {
         tradeList.innerHTML = '<div class="loading"><div class="spinner"></div>Loading trades...</div>';
 
         try {
-            const data = await API.fetchTrades(days, this.currentSymbol);
+            const data = await API.fetchTrades(days, this.currentSymbol, this.currentExchange);
             Trades.allTrades = data.trades;
 
             Trades.renderStats(Trades.allTrades);

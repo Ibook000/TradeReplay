@@ -8,7 +8,7 @@
     <title>Trade Replay</title>
     <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=3">
+    <link rel="stylesheet" href="/static/css/style.css?v=4">
 </head>
 <body>
     <div class="app">
@@ -23,7 +23,12 @@
                         <option>Loading...</option>
                     </select>
                 </div>
-                <div class="controls">
+                <div class="filter-row">
+                    <select id="exchangeSelect">
+                        <option value="">All Exchanges</option>
+                        <option value="OKX">OKX</option>
+                        <option value="Bybit">Bybit</option>
+                    </select>
                     <select id="daysSelect">
                         <option value="7">7D</option>
                         <option value="14">14D</option>
@@ -33,6 +38,8 @@
                         <option value="180">180D</option>
                         <option value="365">1Y</option>
                     </select>
+                </div>
+                <div class="controls">
                     <button id="refreshBtn">Refresh</button>
                     <button id="statsBtn" class="stats-toggle">Stats</button>
                     <button id="aiAnalyzeBtn" class="ai-btn">AI分析</button>
@@ -81,10 +88,10 @@
         </div>
     </div>
 
-    <script src="/static/js/utils.js?v=3"></script>
-    <script src="/static/js/api.js?v=3"></script>
-    <script src="/static/js/chart.js?v=3"></script>
-    <script src="/static/js/trades.js?v=3"></script>
-    <script src="/static/js/app.js?v=3"></script>
+    <script src="/static/js/utils.js?v=4"></script>
+    <script src="/static/js/api.js?v=4"></script>
+    <script src="/static/js/chart.js?v=4"></script>
+    <script src="/static/js/trades.js?v=4"></script>
+    <script src="/static/js/app.js?v=4"></script>
 </body>
 </html>

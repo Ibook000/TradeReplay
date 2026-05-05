@@ -58,11 +58,15 @@ async def get_symbols(days: int = Query(default=90, ge=1, le=365)):
 async def get_trades(
     days: int = Query(default=30, ge=1, le=365),
     symbol: str = Query(default="", description="Filter by symbol"),
+    exchange: str = Query(default="", description="Filter by exchange (OKX, Bybit)"),
 ):
     trades = get_cached(days)
     if symbol:
         symbol = symbol.upper()
         trades = [t for t in trades if t.get("symbol", "BTC") == symbol]
+    if exchange:
+        exchange = exchange.capitalize()
+        trades = [t for t in trades if t.get("exchange", "").capitalize() == exchange]
     return {"trades": trades, "count": len(trades)}
 
 

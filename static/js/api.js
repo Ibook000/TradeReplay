@@ -13,14 +13,16 @@ const API = {
     },
 
     /**
-     * Fetch closed trades, optionally filtered by symbol
+     * Fetch closed trades, optionally filtered by symbol and exchange
      * @param {number} days
      * @param {string} symbol - e.g. 'BTC', 'ETH', '' for all
+     * @param {string} exchange - e.g. 'OKX', 'Bybit', '' for all
      * @returns {Promise<{trades: Array, count: number}>}
      */
-    async fetchTrades(days, symbol = '') {
+    async fetchTrades(days, symbol = '', exchange = '') {
         let url = `/api/trades?days=${days}`;
         if (symbol) url += `&symbol=${symbol}`;
+        if (exchange) url += `&exchange=${exchange}`;
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         return resp.json();
@@ -32,6 +34,7 @@ const API = {
      * @param {number} endMs
      * @param {string} interval
      * @param {string} symbol - e.g. 'BTC'
+     * @param {string} exchange - e.g. 'OKX', 'Bybit'
      * @returns {Promise<{klines: Array, interval: string, count: number}>}
      */
     async fetchKlines(startMs, endMs, interval = 'auto', symbol = 'BTC', exchange = '') {
