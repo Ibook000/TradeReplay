@@ -40,3 +40,17 @@ CREATE TRIGGER update_trades_updated_at
     BEFORE UPDATE ON trades
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- AI Analysis cache table
+CREATE TABLE IF NOT EXISTS ai_analyses (
+    id SERIAL PRIMARY KEY,
+    symbol VARCHAR(16) NOT NULL,
+    days INT NOT NULL,
+    trade_count INT NOT NULL,
+    latest_close_ms BIGINT NOT NULL,
+    analysis TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_analyses_lookup
+    ON ai_analyses(symbol, days, latest_close_ms);

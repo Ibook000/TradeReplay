@@ -17,6 +17,7 @@ import httpx
 
 from cache import get_cached, get_store_count, maybe_refresh, force_refresh, load_from_disk, start_daily_scheduler
 from klines import fetch_klines, pick_interval
+from database import get_ai_analysis, save_ai_analysis, get_trades as db_get_trades
 
 # ─── App ────────────────────────────────────────────────────────────────
 app = FastAPI(title="Trade Replay")
@@ -225,47 +226,63 @@ async def test_exchange(request: Request):
         return {"status": "error", "message": str(e)}
 
 
+@app.get("/api/ai_cached")
+async def ai_cached(symbol: str = Query("BTC"), days: int = Query(30)):
+    """Check for cached AI analysis."""
+    # Get latest close_ms for this symbol/days combo
+    trades = db_get_trades(days=days, symbol=symbol)
+    if not trades:
+        return {"cached": False, "reason": "no_trades"}
+    latest_close_ms = max(t.get("close_ms", 0) for t in trades)
+    analysis = get_ai_analysis(symbol, days, latest_close_ms)
+    if analysis:
+        return {"cached": True, "analysis": analysis, "symbol": symbol, "days": days,
+                "trade_count": len(trades), "analyzed_at": "cached"}
+    return {"cached": False, "reason": "no_match", "trade_count": len(trades),
+            "latest_close_ms": latest_close_ms}
+
+
 @app.post("/api/ai_analyze")
 async def ai_analyze(request: Request):
-    """AI analyzes trade data and provides harsh but constructive feedback."""
+    """AI analyzes trade data with caching. Returns cached result if fresh."""
     body = await request.json()
     trades = body.get("trades", [])
     symbol = body.get("symbol", "BTC")
     days = body.get("days", 30)
-    
+    force = body.get("force", False)
+
     if not trades:
         return {"error": "No trades to analyze"}
-    
+
+    latest_close_ms = max(t.get("close_ms", 0) for t in trades)
+
+    # Check cache first (unless force re-analyze)
+    if not force:
+        cached = get_ai_analysis(symbol, days, latest_close_ms)
+        if cached:
+            return {"analysis": cached, "symbol": symbol, "days": days, "cached": True}
+
     # Get AI config
     api_key = os.getenv("AI_API_KEY", "")
     base_url = os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1")
     model = os.getenv("AI_MODEL", "deepseek-chat")
-    
+
     if not api_key:
         return {"error": "AI not configured. Please set AI_API_KEY in Settings."}
-    
+
     # Prepare trade summary for AI
     total_pnl = sum(t.get("pnl", 0) for t in trades)
     win_trades = [t for t in trades if t.get("pnl", 0) > 0]
     lose_trades = [t for t in trades if t.get("pnl", 0) <= 0]
     win_rate = len(win_trades) / len(trades) * 100 if trades else 0
-    
-    # Calculate average win/loss
     avg_win = sum(t.get("pnl", 0) for t in win_trades) / len(win_trades) if win_trades else 0
     avg_loss = sum(t.get("pnl", 0) for t in lose_trades) / len(lose_trades) if lose_trades else 0
-    
-    # Find biggest win and loss
     biggest_win = max((t.get("pnl", 0) for t in trades), default=0)
     biggest_loss = min((t.get("pnl", 0) for t in trades), default=0)
-    
-    # Calculate average hold time
     avg_hold = sum(t.get("hold_hours", 0) for t in trades) / len(trades) if trades else 0
-    
-    # Find repeated mistakes (losing trades with same direction)
     long_losses = [t for t in lose_trades if t.get("direction") == "long"]
     short_losses = [t for t in lose_trades if t.get("direction") == "short"]
-    
-    # Prepare trade details for AI
+
     trade_summary = f"""
 === {symbol} 交易数据分析 ({days}天) ===
 
@@ -284,8 +301,6 @@ async def ai_analyze(request: Request):
 
 最近5笔交易:
 """
-    
-    # Add recent trades
     recent_trades = trades[-5:] if len(trades) > 5 else trades
     for i, t in enumerate(recent_trades, 1):
         pnl = t.get("pnl", 0)
@@ -294,11 +309,10 @@ async def ai_analyze(request: Request):
         exit_price = t.get("close_price", 0)
         hold = t.get("hold_hours", 0)
         leverage = t.get("leverage", 1)
-        
         trade_summary += f"""
 {i}. {direction.upper()} {leverage}x | Entry: {entry:.2f} → Exit: {exit_price:.2f} | Hold: {hold:.1f}h | PnL: {pnl:+.2f} USDT
 """
-    
+
     prompt = f"""你是一个犀利的交易教练，专门分析合约交易数据，用直接、尖锐的语言指出问题，鞭策交易者改进。
 
 请分析以下交易数据，用中文回答，要求：
@@ -331,14 +345,16 @@ async def ai_analyze(request: Request):
                 },
                 timeout=30.0
             )
-            
+
             if response.status_code == 200:
                 result = response.json()
                 analysis = result["choices"][0]["message"]["content"]
-                return {"analysis": analysis, "symbol": symbol, "days": days}
+                # Save to cache
+                save_ai_analysis(symbol, days, len(trades), latest_close_ms, analysis)
+                return {"analysis": analysis, "symbol": symbol, "days": days, "cached": False}
             else:
                 return {"error": f"API request failed: {response.status_code} - {response.text}"}
-                
+
     except Exception as e:
         return {"error": f"AI analysis failed: {str(e)}"}
 

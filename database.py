@@ -195,3 +195,41 @@ def migrate_from_json(json_file: str):
         print(f"[DB] Migrated {len(trades)} trades from JSON ({new_count} new)", flush=True)
     except Exception as e:
         print(f"[DB] Migration error: {e}", flush=True)
+
+
+def get_ai_analysis(symbol: str, days: int, latest_close_ms: int) -> str | None:
+    """Get cached AI analysis. Returns analysis text or None if stale/missing."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT analysis FROM ai_analyses
+                WHERE symbol = %s AND days = %s AND latest_close_ms = %s
+                ORDER BY created_at DESC LIMIT 1
+            """, (symbol.upper(), days, latest_close_ms))
+            row = cur.fetchone()
+            return row[0] if row else None
+    except Exception as e:
+        print(f"[DB] AI cache read error: {e}", flush=True)
+        return None
+    finally:
+        conn.close()
+
+
+def save_ai_analysis(symbol: str, days: int, trade_count: int,
+                     latest_close_ms: int, analysis: str):
+    """Save AI analysis to cache."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO ai_analyses (symbol, days, trade_count, latest_close_ms, analysis)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (symbol.upper(), days, trade_count, latest_close_ms, analysis))
+        conn.commit()
+        print(f"[DB] Saved AI analysis for {symbol}/{days}d", flush=True)
+    except Exception as e:
+        conn.rollback()
+        print(f"[DB] AI cache save error: {e}", flush=True)
+    finally:
+        conn.close()

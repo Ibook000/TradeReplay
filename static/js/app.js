@@ -20,6 +20,7 @@ const App = {
         document.getElementById('statsBtn').addEventListener('click', () => this.togglePanel('statsPanel'));
         document.getElementById('closeStatsBtn').addEventListener('click', () => this.closePanel('statsPanel'));
         document.getElementById('aiAnalyzeBtn').addEventListener('click', () => this.runAiAnalysis());
+        document.getElementById('aiReanalyzeBtn').addEventListener('click', () => this.runAiAnalysis(true));
         document.getElementById('closeAiPanel').addEventListener('click', () => this.closePanel('aiPanel'));
         document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
         document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closePanel('settingsPanel'));
@@ -200,19 +201,44 @@ const App = {
         document.getElementById('aiModel').value = model;
     },
 
-    async runAiAnalysis() {
+    async runAiAnalysis(force = false) {
         const btn = document.getElementById('aiAnalyzeBtn');
         const panel = document.getElementById('aiPanel');
         const loading = document.getElementById('aiLoading');
         const result = document.getElementById('aiResult');
-        
+        const cacheTag = document.getElementById('aiCacheTag');
+        const reanalyzeBtn = document.getElementById('aiReanalyzeBtn');
+
         if (!Trades.allTrades?.length) return alert('No trades');
-        
+
         panel.classList.add('open');
+
+        // If not forcing, try cached first via GET
+        if (!force) {
+            loading.style.display = 'flex';
+            result.style.display = 'none';
+            try {
+                const days = parseInt(document.getElementById('daysSelect').value);
+                const cacheResp = await fetch(`/api/ai_cached?symbol=${this.currentSymbol}&days=${days}`);
+                const cacheData = await cacheResp.json();
+                if (cacheData.cached) {
+                    result.innerHTML = this.formatAi(cacheData.analysis);
+                    loading.style.display = 'none';
+                    result.style.display = 'block';
+                    cacheTag.style.display = 'inline';
+                    reanalyzeBtn.style.display = 'inline-block';
+                    return;
+                }
+            } catch (e) { /* fall through to analyze */ }
+        }
+
+        // No cache or force re-analyze
         loading.style.display = 'flex';
         result.style.display = 'none';
+        cacheTag.style.display = 'none';
+        reanalyzeBtn.style.display = 'none';
         btn.disabled = true;
-        
+
         try {
             const resp = await fetch('/api/ai_analyze', {
                 method: 'POST',
@@ -220,17 +246,22 @@ const App = {
                 body: JSON.stringify({
                     trades: Trades.allTrades,
                     symbol: this.currentSymbol,
-                    days: parseInt(document.getElementById('daysSelect').value)
+                    days: parseInt(document.getElementById('daysSelect').value),
+                    force: force
                 })
             });
             const data = await resp.json();
-            
+
             result.innerHTML = data.error 
                 ? `<div class="highlight">${data.error}</div>`
                 : this.formatAi(data.analysis);
-            
+
             loading.style.display = 'none';
             result.style.display = 'block';
+            if (!data.error) {
+                cacheTag.style.display = data.cached ? 'inline' : 'none';
+                reanalyzeBtn.style.display = 'inline-block';
+            }
         } catch (e) {
             result.innerHTML = `<div class="highlight">${e.message}</div>`;
             loading.style.display = 'none';
