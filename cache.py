@@ -4,6 +4,7 @@ import json
 import time
 import threading
 from pathlib import Path
+from datetime import datetime, timedelta
 
 from exchanges import get_all_trades
 
@@ -12,6 +13,7 @@ DATA_DIR = Path(__file__).parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
 TRADES_FILE = DATA_DIR / "all_trades.json"
 REFRESH_INTERVAL = 300
+DAILY_REFRESH_HOUR = 3  # 每天凌晨3点自动刷新
 
 _lock = threading.Lock()
 _trade_store: dict[str, dict] = {}
@@ -91,3 +93,27 @@ def force_refresh():
     global _last_refresh
     _last_refresh = 0
     maybe_refresh()
+
+
+def _daily_refresh_loop():
+    """Background loop that runs do_refresh() once per day."""
+    while True:
+        now = datetime.now()
+        # 计算下一次刷新时间
+        next_refresh = now.replace(hour=DAILY_REFRESH_HOUR, minute=0, second=0, microsecond=0)
+        if now >= next_refresh:
+            next_refresh += timedelta(days=1)
+        
+        wait_seconds = (next_refresh - now).total_seconds()
+        print(f"[CACHE] Next daily refresh at {next_refresh.strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
+        
+        time.sleep(wait_seconds)
+        print(f"[CACHE] Daily refresh triggered", flush=True)
+        do_refresh()
+
+
+def start_daily_scheduler():
+    """Start the daily refresh background thread."""
+    t = threading.Thread(target=_daily_refresh_loop, daemon=True)
+    t.start()
+    print(f"[CACHE] Daily scheduler started (refresh at {DAILY_REFRESH_HOUR}:00)", flush=True)

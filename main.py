@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from cache import get_cached, get_store_count, maybe_refresh, force_refresh, load_from_disk
+from cache import get_cached, get_store_count, maybe_refresh, force_refresh, load_from_disk, start_daily_scheduler
 from klines import fetch_klines, pick_interval
 
 # ─── App ────────────────────────────────────────────────────────────────
@@ -33,6 +33,7 @@ class NoCacheMiddleware(BaseHTTPMiddleware):
 app.add_middleware(NoCacheMiddleware)
 
 load_from_disk()
+start_daily_scheduler()
 
 
 # ─── API Endpoints ───────────────────────────────────────────────────────
