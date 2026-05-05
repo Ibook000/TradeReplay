@@ -105,6 +105,73 @@ async def get_klines_range(
     return {"klines": klines, "interval": interval, "count": len(klines)}
 
 
+@app.get("/api/ai_config")
+async def get_ai_config():
+    """Get current AI configuration (masked key)."""
+    api_key = os.getenv("AI_API_KEY", "")
+    base_url = os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1")
+    model = os.getenv("AI_MODEL", "deepseek-chat")
+    
+    # Mask the API key
+    masked_key = ""
+    if api_key:
+        if len(api_key) > 8:
+            masked_key = api_key[:4] + "..." + api_key[-4:]
+        else:
+            masked_key = "***"
+    
+    return {
+        "base_url": base_url,
+        "model": model,
+        "api_key_masked": masked_key,
+        "configured": bool(api_key)
+    }
+
+
+@app.post("/api/ai_config")
+async def update_ai_config(request: Request):
+    """Update AI configuration."""
+    body = await request.json()
+    base_url = body.get("base_url", "")
+    api_key = body.get("api_key", "")
+    model = body.get("model", "")
+    
+    env_path = Path(__file__).parent / ".env"
+    
+    # Read existing .env content
+    env_content = ""
+    if env_path.exists():
+        env_content = env_path.read_text()
+    
+    # Update or add AI config
+    lines = env_content.split("\n")
+    new_lines = []
+    keys_to_update = {"AI_BASE_URL": base_url, "AI_API_KEY": api_key, "AI_MODEL": model}
+    updated_keys = set()
+    
+    for line in lines:
+        key = line.split("=")[0].strip() if "=" in line else ""
+        if key in keys_to_update:
+            if keys_to_update[key]:  # Only update if value is provided
+                new_lines.append(f"{key}={keys_to_update[key]}")
+                updated_keys.add(key)
+        else:
+            new_lines.append(line)
+    
+    # Add any new keys that weren't in the file
+    for key, value in keys_to_update.items():
+        if key not in updated_keys and value:
+            new_lines.append(f"{key}={value}")
+    
+    # Write back to .env
+    env_path.write_text("\n".join(new_lines))
+    
+    # Reload environment
+    load_dotenv(env_path, override=True)
+    
+    return {"status": "ok", "message": "AI configuration updated"}
+
+
 @app.post("/api/ai_analyze")
 async def ai_analyze(request: Request):
     """AI analyzes trade data and provides harsh but constructive feedback."""
@@ -115,6 +182,14 @@ async def ai_analyze(request: Request):
     
     if not trades:
         return {"error": "No trades to analyze"}
+    
+    # Get AI config
+    api_key = os.getenv("AI_API_KEY", "")
+    base_url = os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1")
+    model = os.getenv("AI_MODEL", "deepseek-chat")
+    
+    if not api_key:
+        return {"error": "AI not configured. Please set AI_API_KEY in Settings."}
     
     # Prepare trade summary for AI
     total_pnl = sum(t.get("pnl", 0) for t in trades)
@@ -171,11 +246,6 @@ async def ai_analyze(request: Request):
 {i}. {direction.upper()} {leverage}x | Entry: {entry:.2f} → Exit: {exit_price:.2f} | Hold: {hold:.1f}h | PnL: {pnl:+.2f} USDT
 """
     
-    # Call DeepSeek API
-    api_key = os.getenv("DEEPSEEK_API_KEY")
-    if not api_key:
-        return {"error": "DEEPSEEK_API_KEY not configured"}
-    
     prompt = f"""你是一个犀利的交易教练，专门分析合约交易数据，用直接、尖锐的语言指出问题，鞭策交易者改进。
 
 请分析以下交易数据，用中文回答，要求：
@@ -192,13 +262,13 @@ async def ai_analyze(request: Request):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "https://api.deepseek.com/v1/chat/completions",
+                f"{base_url}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "deepseek-chat",
+                    "model": model,
                     "messages": [
                         {"role": "system", "content": "你是一个犀利的交易教练，专门分析合约交易数据，用直接、尖锐的语言指出问题，鞭策交易者改进。"},
                         {"role": "user", "content": prompt}
@@ -214,7 +284,7 @@ async def ai_analyze(request: Request):
                 analysis = result["choices"][0]["message"]["content"]
                 return {"analysis": analysis, "symbol": symbol, "days": days}
             else:
-                return {"error": f"API request failed: {response.status_code}"}
+                return {"error": f"API request failed: {response.status_code} - {response.text}"}
                 
     except Exception as e:
         return {"error": f"AI analysis failed: {str(e)}"}

@@ -12,6 +12,7 @@ const App = {
         KlineChart.init(document.getElementById('chart'));
         this.bindEvents();
         await this.loadSymbols();
+        this.loadAiConfig();
     },
 
     /**
@@ -29,6 +30,20 @@ const App = {
         // AI analysis
         document.getElementById('aiAnalyzeBtn').addEventListener('click', () => this.runAiAnalysis());
         document.getElementById('closeAiPanel').addEventListener('click', () => this.closeAiPanel());
+        
+        // Settings
+        document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
+        document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closeSettings());
+        document.getElementById('saveSettingsBtn').addEventListener('click', () => this.saveSettings());
+        document.getElementById('testSettingsBtn').addEventListener('click', () => this.testSettings());
+        
+        // Example items click
+        document.querySelectorAll('.example-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.getElementById('aiBaseUrl').value = item.dataset.url;
+                document.getElementById('aiModel').value = item.dataset.model;
+            });
+        });
     },
 
     /**
@@ -37,6 +52,115 @@ const App = {
     onExchangeChange() {
         this.currentExchange = document.getElementById('exchangeSelect').value;
         this.loadTrades();
+    },
+
+    /**
+     * Load AI configuration
+     */
+    async loadAiConfig() {
+        try {
+            const resp = await fetch('/api/ai_config');
+            const data = await resp.json();
+            document.getElementById('aiBaseUrl').value = data.base_url || '';
+            document.getElementById('aiModel').value = data.model || '';
+            document.getElementById('apiKeyMasked').textContent = data.api_key_masked || '未配置';
+        } catch (e) {
+            console.error('Failed to load AI config:', e);
+        }
+    },
+
+    /**
+     * Open settings panel
+     */
+    openSettings() {
+        document.getElementById('settingsPanel').classList.add('open');
+        this.loadAiConfig();
+    },
+
+    /**
+     * Close settings panel
+     */
+    closeSettings() {
+        document.getElementById('settingsPanel').classList.remove('open');
+    },
+
+    /**
+     * Save AI settings
+     */
+    async saveSettings() {
+        const baseUrl = document.getElementById('aiBaseUrl').value.trim();
+        const apiKey = document.getElementById('aiApiKey').value.trim();
+        const model = document.getElementById('aiModel').value.trim();
+        const status = document.getElementById('settingsStatus');
+        
+        try {
+            const resp = await fetch('/api/ai_config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ base_url: baseUrl, api_key: apiKey, model: model })
+            });
+            
+            const data = await resp.json();
+            
+            if (data.status === 'ok') {
+                status.textContent = '✓ 配置已保存';
+                status.className = 'settings-status success';
+                // Clear the API key input for security
+                document.getElementById('aiApiKey').value = '';
+                // Reload config to show masked key
+                this.loadAiConfig();
+            } else {
+                status.textContent = '✗ 保存失败';
+                status.className = 'settings-status error';
+            }
+        } catch (e) {
+            status.textContent = '✗ 保存失败: ' + e.message;
+            status.className = 'settings-status error';
+        }
+    },
+
+    /**
+     * Test AI connection
+     */
+    async testSettings() {
+        const status = document.getElementById('settingsStatus');
+        const btn = document.getElementById('testSettingsBtn');
+        
+        btn.disabled = true;
+        btn.textContent = '测试中...';
+        status.textContent = '';
+        
+        try {
+            // Save first
+            await this.saveSettings();
+            
+            // Then test with a simple request
+            const resp = await fetch('/api/ai_analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    trades: [{ pnl: 1.0, direction: 'long', open_price: 100, close_price: 101, hold_hours: 1, leverage: 10 }],
+                    symbol: 'TEST',
+                    days: 1
+                })
+            });
+            
+            const data = await resp.json();
+            
+            if (data.error) {
+                status.textContent = '✗ 连接失败: ' + data.error;
+                status.className = 'settings-status error';
+            } else {
+                status.textContent = '✓ 连接成功！AI 正常工作';
+                status.className = 'settings-status success';
+            }
+        } catch (e) {
+            status.textContent = '✗ 测试失败: ' + e.message;
+            status.className = 'settings-status error';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '测试连接';
+        }
     },
 
     /**
@@ -162,7 +286,7 @@ const App = {
             const data = await response.json();
             
             if (data.error) {
-                result.innerHTML = `<div class="highlight">Error: ${data.error}</div>`;
+                result.innerHTML = `<div class="highlight">${data.error}</div>`;
             } else {
                 // Parse and render the AI analysis
                 result.innerHTML = this.formatAiAnalysis(data.analysis);

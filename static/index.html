@@ -8,7 +8,7 @@
     <title>Trade Replay</title>
     <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=4">
+    <link rel="stylesheet" href="/static/css/style.css?v=5">
 </head>
 <body>
     <div class="app">
@@ -43,6 +43,7 @@
                     <button id="refreshBtn">Refresh</button>
                     <button id="statsBtn" class="stats-toggle">Stats</button>
                     <button id="aiAnalyzeBtn" class="ai-btn">AI分析</button>
+                    <button id="settingsBtn" class="settings-btn">⚙</button>
                 </div>
                 <div class="stats" id="stats"></div>
             </div>
@@ -88,10 +89,71 @@
         </div>
     </div>
 
-    <script src="/static/js/utils.js?v=4"></script>
-    <script src="/static/js/api.js?v=4"></script>
-    <script src="/static/js/chart.js?v=4"></script>
-    <script src="/static/js/trades.js?v=4"></script>
-    <script src="/static/js/app.js?v=4"></script>
+    <!-- Settings Panel (overlay) -->
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-panel-header">
+            <h2>AI 设置</h2>
+            <button class="close-btn" id="closeSettingsBtn">&times;</button>
+        </div>
+        <div class="settings-panel-content">
+            <div class="settings-section">
+                <div class="settings-title">AI 配置</div>
+                <div class="settings-note">配置 OpenAI 兼容的 API 接口</div>
+                
+                <div class="settings-group">
+                    <label>Base URL</label>
+                    <input type="text" id="aiBaseUrl" placeholder="https://api.deepseek.com/v1">
+                    <div class="settings-hint">API 端点地址 (OpenAI 兼容)</div>
+                </div>
+                
+                <div class="settings-group">
+                    <label>API Key</label>
+                    <input type="password" id="aiApiKey" placeholder="sk-...">
+                    <div class="settings-hint">当前: <span id="apiKeyMasked">未配置</span></div>
+                </div>
+                
+                <div class="settings-group">
+                    <label>Model</label>
+                    <input type="text" id="aiModel" placeholder="deepseek-chat">
+                    <div class="settings-hint">模型名称</div>
+                </div>
+                
+                <div class="settings-actions">
+                    <button id="saveSettingsBtn" class="save-btn">保存配置</button>
+                    <button id="testSettingsBtn" class="test-btn">测试连接</button>
+                </div>
+                
+                <div class="settings-status" id="settingsStatus"></div>
+            </div>
+            
+            <div class="settings-section">
+                <div class="settings-title">常用配置示例</div>
+                <div class="settings-examples">
+                    <div class="example-item" data-url="https://api.deepseek.com/v1" data-model="deepseek-chat">
+                        <strong>DeepSeek</strong>
+                        <span>api.deepseek.com / deepseek-chat</span>
+                    </div>
+                    <div class="example-item" data-url="https://api.openai.com/v1" data-model="gpt-4o">
+                        <strong>OpenAI</strong>
+                        <span>api.openai.com / gpt-4o</span>
+                    </div>
+                    <div class="example-item" data-url="https://api.groq.com/openai/v1" data-model="llama-3.1-70b-versatile">
+                        <strong>Groq</strong>
+                        <span>api.groq.com / llama-3.1-70b</span>
+                    </div>
+                    <div class="example-item" data-url="https://openrouter.ai/api/v1" data-model="anthropic/claude-3.5-sonnet">
+                        <strong>OpenRouter</strong>
+                        <span>openrouter.ai / claude-3.5-sonnet</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/utils.js?v=5"></script>
+    <script src="/static/js/api.js?v=5"></script>
+    <script src="/static/js/chart.js?v=5"></script>
+    <script src="/static/js/trades.js?v=5"></script>
+    <script src="/static/js/app.js?v=5"></script>
 </body>
 </html>
