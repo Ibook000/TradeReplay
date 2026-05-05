@@ -738,7 +738,20 @@ select:focus { outline: none; border-color: var(--blue); }
 
 /* ─── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .sidebar { width: 100%; min-width: 100%; }
-    .main { display: none; }
+    .app { flex-direction: column; }
+    .sidebar {
+        width: 100%;
+        min-width: 100%;
+        max-height: 45vh;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+    .main {
+        flex: 1;
+        min-height: 0;
+    }
+    .chart-container { min-height: 200px; }
     .stats-panel, .ai-panel, .settings-panel { width: 100%; }
+    .trade-card .details { font-size: 9px; }
+    .trade-card .details .val { font-size: 8px; }
 }

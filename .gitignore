@@ -10,7 +10,7 @@ build/
 .env
 exchanges/keys.py
 
-# Data (traded at runtime)
+# Data (generated at runtime)
 data/
 
 # IDE
@@ -22,6 +22,3 @@ data/
 # OS
 .DS_Store
 Thumbs.db
-
-# PostgreSQL migrated files
-*.json.migrated
