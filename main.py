@@ -45,6 +45,7 @@ async def index():
 @app.get("/api/symbols")
 async def get_symbols(days: int = Query(default=90, ge=1, le=365)):
     maybe_refresh()
+    from cache import get_cached
     trades = get_cached(days)
     counter = Counter(t.get("symbol", "BTC") for t in trades)
     symbols = [{"symbol": s, "count": c} for s, c in counter.most_common()]

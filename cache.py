@@ -1,78 +1,60 @@
-"""Trade data cache — disk persistence, background refresh."""
+"""Trade data cache — PostgreSQL persistence, background refresh."""
 
-import json
 import time
 import threading
 from pathlib import Path
-from datetime import datetime, timedelta
 
 from exchanges import get_all_trades
+from database import init_db, upsert_trades, get_trades, get_symbol_counts, get_total_count, migrate_from_json
 
 # ─── Config ───────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent / "data"
-DATA_DIR.mkdir(exist_ok=True)
 TRADES_FILE = DATA_DIR / "all_trades.json"
 REFRESH_INTERVAL = 300
 DAILY_REFRESH_HOUR = 3  # 每天凌晨3点自动刷新
 
 _lock = threading.Lock()
-_trade_store: dict[str, dict] = {}
 _last_refresh: float = 0
 
 
 def load_from_disk():
-    """Load cached trades from JSON file."""
-    global _trade_store
+    """Initialize database and migrate JSON data if exists."""
+    init_db()
+    
+    # Migrate existing JSON data to PostgreSQL
     if TRADES_FILE.exists():
-        try:
-            trades = json.loads(TRADES_FILE.read_text())
-            with _lock:
-                _trade_store = {t["id"]: t for t in trades}
-            print(f"[CACHE] Loaded {len(_trade_store)} trades from disk", flush=True)
-        except Exception as e:
-            print(f"[CACHE] Load failed: {e}", flush=True)
-
-
-def save_to_disk():
-    """Persist current trade store to JSON file."""
-    with _lock:
-        trades = sorted(_trade_store.values(), key=lambda t: t["close_ms"])
-    TRADES_FILE.write_text(json.dumps(trades, indent=2))
+        migrate_from_json(str(TRADES_FILE))
+        # Rename JSON file to avoid re-migration
+        TRADES_FILE.rename(TRADES_FILE.with_suffix(".json.migrated"))
+        print(f"[CACHE] Migrated JSON data to PostgreSQL", flush=True)
+    
+    total = get_total_count()
+    print(f"[CACHE] Database ready with {total} trades", flush=True)
 
 
 def get_cached(days: int) -> list[dict]:
     """Return trades closed within the last N days."""
-    now_ms = int(time.time() * 1000)
-    cutoff = now_ms - days * 86400 * 1000
-    with _lock:
-        trades = [t for t in _trade_store.values() if t["close_ms"] >= cutoff]
-    trades.sort(key=lambda t: t["close_ms"])
-    return trades
+    return get_trades(days=days)
 
 
 def get_store_count() -> int:
     """Total trades in store."""
-    return len(_trade_store)
+    return get_total_count()
 
 
 def do_refresh():
-    """Fetch new trades from all exchanges and merge into store."""
+    """Fetch new trades from all exchanges and merge into database."""
     global _last_refresh
     try:
         import asyncio
         loop = asyncio.new_event_loop()
         new_trades = loop.run_until_complete(get_all_trades(days=180))
         loop.close()
-        new_count = 0
-        with _lock:
-            for t in new_trades:
-                tid = t["id"]
-                if tid not in _trade_store:
-                    new_count += 1
-                _trade_store[tid] = t
-        save_to_disk()
+        
+        new_count = upsert_trades(new_trades)
         _last_refresh = time.time()
-        print(f"[CACHE] Refresh done: +{new_count} new, total {len(_trade_store)}", flush=True)
+        total = get_total_count()
+        print(f"[CACHE] Refresh done: +{new_count} new, total {total}", flush=True)
     except Exception as e:
         print(f"[CACHE] Refresh failed: {e}", flush=True)
 
@@ -98,6 +80,7 @@ def force_refresh():
 def _daily_refresh_loop():
     """Background loop that runs do_refresh() once per day."""
     while True:
+        from datetime import datetime, timedelta
         now = datetime.now()
         # 计算下一次刷新时间
         next_refresh = now.replace(hour=DAILY_REFRESH_HOUR, minute=0, second=0, microsecond=0)
