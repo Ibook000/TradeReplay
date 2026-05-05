@@ -1,13 +1,8 @@
-// ─── App (Main Entry) ───────────────────────────────────────────────────────
-
 const App = {
-    currentSymbol: '',  // Active symbol (e.g. 'BTC')
-    currentExchange: '',  // Active exchange filter ('' = all, 'OKX', 'Bybit')
-    allSymbols: [],      // Available symbols from API
+    currentSymbol: '',
+    currentExchange: '',
+    allSymbols: [],
 
-    /**
-     * Initialize the application
-     */
     async init() {
         KlineChart.init(document.getElementById('chart'));
         this.bindEvents();
@@ -15,114 +10,78 @@ const App = {
         this.loadConfig();
     },
 
-    /**
-     * Bind DOM events
-     */
     bindEvents() {
         document.getElementById('refreshBtn').addEventListener('click', () => this.loadTrades());
         document.getElementById('daysSelect').addEventListener('change', () => this.loadTrades());
-        document.getElementById('exchangeSelect').addEventListener('change', () => this.onExchangeChange());
-
-        // Stats panel toggle
-        document.getElementById('statsBtn').addEventListener('click', () => this.toggleStatsPanel());
-        document.getElementById('closeStatsBtn').addEventListener('click', () => this.closeStatsPanel());
-        
-        // AI analysis
+        document.getElementById('exchangeSelect').addEventListener('change', () => {
+            this.currentExchange = document.getElementById('exchangeSelect').value;
+            this.loadTrades();
+        });
+        document.getElementById('statsBtn').addEventListener('click', () => this.togglePanel('statsPanel'));
+        document.getElementById('closeStatsBtn').addEventListener('click', () => this.closePanel('statsPanel'));
         document.getElementById('aiAnalyzeBtn').addEventListener('click', () => this.runAiAnalysis());
-        document.getElementById('closeAiPanel').addEventListener('click', () => this.closeAiPanel());
-        
-        // Settings
+        document.getElementById('closeAiPanel').addEventListener('click', () => this.closePanel('aiPanel'));
         document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
-        document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closeSettings());
+        document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closePanel('settingsPanel'));
     },
 
-    /**
-     * Handle exchange filter change
-     */
-    onExchangeChange() {
-        this.currentExchange = document.getElementById('exchangeSelect').value;
-        this.loadTrades();
+    togglePanel(id) {
+        document.getElementById(id).classList.toggle('open');
+        if (id === 'statsPanel' && document.getElementById(id).classList.contains('open')) {
+            Trades.renderDetailedStats(Trades.allTrades);
+        }
     },
 
-    /**
-     * Load all configuration
-     */
+    closePanel(id) {
+        document.getElementById(id).classList.remove('open');
+    },
+
+    async openSettings() {
+        document.getElementById('settingsPanel').classList.add('open');
+        await this.loadConfig();
+    },
+
+    togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        input.type = input.type === 'password' ? 'text' : 'password';
+    },
+
     async loadConfig() {
         try {
             const resp = await fetch('/api/config');
             const data = await resp.json();
             
+            // Status dots
+            document.getElementById('okxStatusDot').classList.toggle('active', data.okx.configured);
+            document.getElementById('bybitStatusDot').classList.toggle('active', data.bybit.configured);
+            document.getElementById('aiStatusDot').classList.toggle('active', data.ai.configured);
+            
             // OKX
-            document.getElementById('okxKeyMasked').textContent = data.okx.api_key || '未配置';
-            document.getElementById('okxSecretMasked').textContent = data.okx.secret_key || '未配置';
-            const okxCard = document.getElementById('okxStatusCard');
-            const okxText = document.getElementById('okxStatusText');
-            if (data.okx.configured) {
-                okxCard.classList.add('configured');
-                okxText.textContent = '已配置';
-            } else {
-                okxCard.classList.remove('configured');
-                okxText.textContent = '未配置';
-            }
+            document.getElementById('okxKeyMasked').textContent = data.okx.api_key || '--';
+            document.getElementById('okxSecretMasked').textContent = data.okx.secret_key || '--';
             
             // Bybit
-            document.getElementById('bybitKeyMasked').textContent = data.bybit.api_key || '未配置';
-            document.getElementById('bybitSecretMasked').textContent = data.bybit.secret_key || '未配置';
-            const bybitCard = document.getElementById('bybitStatusCard');
-            const bybitText = document.getElementById('bybitStatusText');
-            if (data.bybit.configured) {
-                bybitCard.classList.add('configured');
-                bybitText.textContent = '已配置';
-            } else {
-                bybitCard.classList.remove('configured');
-                bybitText.textContent = '未配置';
-            }
+            document.getElementById('bybitKeyMasked').textContent = data.bybit.api_key || '--';
+            document.getElementById('bybitSecretMasked').textContent = data.bybit.secret_key || '--';
             
             // AI
             document.getElementById('aiBaseUrl').value = data.ai.base_url || '';
             document.getElementById('aiModel').value = data.ai.model || '';
-            document.getElementById('aiKeyMasked').textContent = data.ai.api_key || '未配置';
-            const aiCard = document.getElementById('aiStatusCard');
-            const aiText = document.getElementById('aiStatusText');
-            if (data.ai.configured) {
-                aiCard.classList.add('configured');
-                aiText.textContent = '已配置';
-            } else {
-                aiCard.classList.remove('configured');
-                aiText.textContent = '未配置';
-            }
+            document.getElementById('aiKeyMasked').textContent = data.ai.api_key || '--';
         } catch (e) {
             console.error('Failed to load config:', e);
         }
     },
 
-    /**
-     * Open settings panel
-     */
-    openSettings() {
-        document.getElementById('settingsPanel').classList.add('open');
-        this.loadConfig();
-    },
-
-    /**
-     * Close settings panel
-     */
-    closeSettings() {
-        document.getElementById('settingsPanel').classList.remove('open');
-    },
-
-    /**
-     * Save exchange configuration
-     */
     async saveExchangeConfig(exchange) {
         const status = document.getElementById(`${exchange}Status`);
-        
         const body = {};
+        
         if (exchange === 'okx') {
             body.okx_api_key = document.getElementById('okxApiKey').value.trim();
             body.okx_secret_key = document.getElementById('okxSecretKey').value.trim();
             body.okx_passphrase = document.getElementById('okxPassphrase').value.trim();
-        } else if (exchange === 'bybit') {
+        } else {
             body.bybit_api_key = document.getElementById('bybitApiKey').value.trim();
             body.bybit_secret_key = document.getElementById('bybitSecretKey').value.trim();
         }
@@ -133,75 +92,67 @@ const App = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
-            
             const data = await resp.json();
             
             if (data.status === 'ok') {
-                status.textContent = '✓ 配置已保存';
-                status.className = 'settings-status success';
-                // Clear inputs for security
-                if (exchange === 'okx') {
-                    document.getElementById('okxApiKey').value = '';
-                    document.getElementById('okxSecretKey').value = '';
-                    document.getElementById('okxPassphrase').value = '';
-                } else {
-                    document.getElementById('bybitApiKey').value = '';
-                    document.getElementById('bybitSecretKey').value = '';
-                }
-                this.loadConfig();
+                status.textContent = 'Saved';
+                status.className = 'form-status success';
+                this.clearInputs(exchange);
+                await this.loadConfig();
             } else {
-                status.textContent = '✗ 保存失败';
-                status.className = 'settings-status error';
+                status.textContent = 'Failed';
+                status.className = 'form-status error';
             }
         } catch (e) {
-            status.textContent = '✗ 保存失败: ' + e.message;
-            status.className = 'settings-status error';
+            status.textContent = e.message;
+            status.className = 'form-status error';
         }
     },
 
-    /**
-     * Save AI configuration
-     */
     async saveAiConfig() {
         const status = document.getElementById('aiStatus');
-        
-        const body = {
-            ai_base_url: document.getElementById('aiBaseUrl').value.trim(),
-            ai_api_key: document.getElementById('aiApiKey').value.trim(),
-            ai_model: document.getElementById('aiModel').value.trim(),
-        };
-        
         try {
             const resp = await fetch('/api/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify({
+                    ai_base_url: document.getElementById('aiBaseUrl').value.trim(),
+                    ai_api_key: document.getElementById('aiApiKey').value.trim(),
+                    ai_model: document.getElementById('aiModel').value.trim()
+                })
             });
-            
             const data = await resp.json();
             
             if (data.status === 'ok') {
-                status.textContent = '✓ 配置已保存';
-                status.className = 'settings-status success';
+                status.textContent = 'Saved';
+                status.className = 'form-status success';
                 document.getElementById('aiApiKey').value = '';
-                this.loadConfig();
+                await this.loadConfig();
             } else {
-                status.textContent = '✗ 保存失败';
-                status.className = 'settings-status error';
+                status.textContent = 'Failed';
+                status.className = 'form-status error';
             }
         } catch (e) {
-            status.textContent = '✗ 保存失败: ' + e.message;
-            status.className = 'settings-status error';
+            status.textContent = e.message;
+            status.className = 'form-status error';
         }
     },
 
-    /**
-     * Test exchange connection
-     */
+    clearInputs(exchange) {
+        if (exchange === 'okx') {
+            document.getElementById('okxApiKey').value = '';
+            document.getElementById('okxSecretKey').value = '';
+            document.getElementById('okxPassphrase').value = '';
+        } else {
+            document.getElementById('bybitApiKey').value = '';
+            document.getElementById('bybitSecretKey').value = '';
+        }
+    },
+
     async testExchange(exchange) {
         const status = document.getElementById(`${exchange}Status`);
-        status.textContent = '测试中...';
-        status.className = 'settings-status';
+        status.textContent = 'Testing...';
+        status.className = 'form-status';
         
         try {
             const resp = await fetch('/api/test_exchange', {
@@ -209,94 +160,98 @@ const App = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ exchange })
             });
-            
             const data = await resp.json();
             
-            if (data.status === 'ok') {
-                status.textContent = '✓ ' + data.message;
-                status.className = 'settings-status success';
-            } else {
-                status.textContent = '✗ ' + data.message;
-                status.className = 'settings-status error';
-            }
+            status.textContent = data.status === 'ok' ? data.message : data.message;
+            status.className = `form-status ${data.status === 'ok' ? 'success' : 'error'}`;
         } catch (e) {
-            status.textContent = '✗ 测试失败: ' + e.message;
-            status.className = 'settings-status error';
+            status.textContent = e.message;
+            status.className = 'form-status error';
         }
     },
 
-    /**
-     * Test AI connection
-     */
     async testAi() {
         const status = document.getElementById('aiStatus');
-        status.textContent = '测试中...';
-        status.className = 'settings-status';
+        status.textContent = 'Testing...';
+        status.className = 'form-status';
         
         try {
-            // Save first
             await this.saveAiConfig();
-            
-            // Test with a simple request
             const resp = await fetch('/api/ai_analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    trades: [{ pnl: 1.0, direction: 'long', open_price: 100, close_price: 101, hold_hours: 1, leverage: 10 }],
-                    symbol: 'TEST',
-                    days: 1
+                    trades: [{ pnl: 1, direction: 'long', open_price: 100, close_price: 101, hold_hours: 1, leverage: 10 }],
+                    symbol: 'TEST', days: 1
                 })
             });
-            
             const data = await resp.json();
             
-            if (data.error) {
-                status.textContent = '✗ 连接失败: ' + data.error;
-                status.className = 'settings-status error';
-            } else {
-                status.textContent = '✓ 连接成功！AI 正常工作';
-                status.className = 'settings-status success';
-            }
+            status.textContent = data.error ? data.error : 'Connected';
+            status.className = `form-status ${data.error ? 'error' : 'success'}`;
         } catch (e) {
-            status.textContent = '✗ 测试失败: ' + e.message;
-            status.className = 'settings-status error';
+            status.textContent = e.message;
+            status.className = 'form-status error';
         }
     },
 
-    /**
-     * Fill AI example values
-     */
     fillAiExample(url, model) {
         document.getElementById('aiBaseUrl').value = url;
         document.getElementById('aiModel').value = model;
     },
 
-    /**
-     * Toggle password visibility
-     */
-    togglePassword(inputId) {
-        const input = document.getElementById(inputId);
-        const btn = input.nextElementSibling;
-        if (input.type === 'password') {
-            input.type = 'text';
-            btn.textContent = '🙈';
-        } else {
-            input.type = 'password';
-            btn.textContent = '👁';
+    async runAiAnalysis() {
+        const btn = document.getElementById('aiAnalyzeBtn');
+        const panel = document.getElementById('aiPanel');
+        const loading = document.getElementById('aiLoading');
+        const result = document.getElementById('aiResult');
+        
+        if (!Trades.allTrades?.length) return alert('No trades');
+        
+        panel.classList.add('open');
+        loading.style.display = 'flex';
+        result.style.display = 'none';
+        btn.disabled = true;
+        
+        try {
+            const resp = await fetch('/api/ai_analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    trades: Trades.allTrades,
+                    symbol: this.currentSymbol,
+                    days: parseInt(document.getElementById('daysSelect').value)
+                })
+            });
+            const data = await resp.json();
+            
+            result.innerHTML = data.error 
+                ? `<div class="highlight">${data.error}</div>`
+                : this.formatAi(data.analysis);
+            
+            loading.style.display = 'none';
+            result.style.display = 'block';
+        } catch (e) {
+            result.innerHTML = `<div class="highlight">${e.message}</div>`;
+            loading.style.display = 'none';
+            result.style.display = 'block';
+        } finally {
+            btn.disabled = false;
         }
     },
 
-    /**
-     * Toggle settings section collapse
-     */
-    toggleSection(section) {
-        const el = document.getElementById(`${section}Section`).parentElement;
-        el.classList.toggle('collapsed');
+    formatAi(text) {
+        return text
+            .replace(/^###? (.*$)/gm, '<h3>$1</h3>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^\- (.*$)/gm, '<li>$1</li>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>')
+            .replace(/(<li>.*<\/li>)+/gs, '<ul>$&</ul>')
+            .replace(/(-\d+\.?\d*)/g, '<span class="highlight">$1</span>')
+            .replace(/(\+\d+\.?\d*)/g, '<span class="positive">$1</span>');
     },
 
-    /**
-     * Load available symbols and render dropdown
-     */
     async loadSymbols() {
         const sel = document.getElementById('symbolSelect');
         sel.innerHTML = '<option>Loading...</option>';
@@ -305,176 +260,57 @@ const App = {
             const data = await API.fetchSymbols(180);
             this.allSymbols = data.symbols || [];
 
-            if (this.allSymbols.length === 0) {
+            if (!this.allSymbols.length) {
                 sel.innerHTML = '<option>No trades</option>';
                 return;
             }
 
-            // Default to first symbol
             this.currentSymbol = this.allSymbols[0].symbol;
+            document.getElementById('totalBadge').textContent = `${this.allSymbols.reduce((s, x) => s + x.count, 0)} trades`;
 
-            // Update total badge
-            const totalTrades = this.allSymbols.reduce((s, x) => s + x.count, 0);
-            document.getElementById('totalBadge').textContent = `${totalTrades} trades`;
-
-            // Render select options
             sel.innerHTML = this.allSymbols.map(s =>
-                `<option value="${s.symbol}" ${s.symbol === this.currentSymbol ? 'selected' : ''}>
-                    ${s.symbol} (${s.count})
-                </option>`
+                `<option value="${s.symbol}" ${s.symbol === this.currentSymbol ? 'selected' : ''}>${s.symbol} (${s.count})</option>`
             ).join('');
 
-            // Bind change event
             sel.onchange = () => this.switchSymbol(sel.value);
-
-            // Load trades for default symbol
             await this.loadTrades();
         } catch (e) {
-            sel.innerHTML = '<option>Error loading</option>';
+            sel.innerHTML = '<option>Error</option>';
         }
     },
 
-    /**
-     * Switch to a different symbol
-     */
     async switchSymbol(symbol) {
         if (symbol === this.currentSymbol) return;
         this.currentSymbol = symbol;
         document.getElementById('symbolSelect').value = symbol;
-        this.closeStatsPanel();
-        this.closeAiPanel();
+        this.closePanel('statsPanel');
+        this.closePanel('aiPanel');
         await this.loadTrades();
     },
 
-    /**
-     * Toggle stats panel visibility
-     */
-    toggleStatsPanel() {
-        const panel = document.getElementById('statsPanel');
-        panel.classList.toggle('open');
-        if (panel.classList.contains('open')) {
-            Trades.renderDetailedStats(Trades.allTrades);
-        }
-    },
-
-    /**
-     * Close stats panel
-     */
-    closeStatsPanel() {
-        document.getElementById('statsPanel').classList.remove('open');
-    },
-
-    /**
-     * Close AI panel
-     */
-    closeAiPanel() {
-        document.getElementById('aiPanel').classList.remove('open');
-    },
-
-    /**
-     * Run AI analysis on current trades
-     */
-    async runAiAnalysis() {
-        const btn = document.getElementById('aiAnalyzeBtn');
-        const panel = document.getElementById('aiPanel');
-        const loading = document.getElementById('aiLoading');
-        const result = document.getElementById('aiResult');
-        
-        if (!Trades.allTrades || Trades.allTrades.length === 0) {
-            alert('No trades to analyze');
-            return;
-        }
-        
-        panel.classList.add('open');
-        loading.style.display = 'flex';
-        result.style.display = 'none';
-        btn.disabled = true;
-        btn.textContent = '分析中...';
-        
-        try {
-            const days = document.getElementById('daysSelect').value;
-            const response = await fetch('/api/ai_analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    trades: Trades.allTrades,
-                    symbol: this.currentSymbol,
-                    days: parseInt(days)
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (data.error) {
-                result.innerHTML = `<div class="highlight">${data.error}</div>`;
-            } else {
-                result.innerHTML = this.formatAiAnalysis(data.analysis);
-            }
-            
-            loading.style.display = 'none';
-            result.style.display = 'block';
-        } catch (e) {
-            result.innerHTML = `<div class="highlight">Failed to get AI analysis: ${e.message}</div>`;
-            loading.style.display = 'none';
-            result.style.display = 'block';
-        } finally {
-            btn.disabled = false;
-            btn.textContent = 'AI分析';
-        }
-    },
-
-    /**
-     * Format AI analysis text to HTML
-     */
-    formatAiAnalysis(text) {
-        let html = text
-            .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-            .replace(/^## (.*$)/gm, '<h3>$1</h3>')
-            .replace(/^# (.*$)/gm, '<h3>$1</h3>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/^\- (.*$)/gm, '<li>$1</li>')
-            .replace(/^\* (.*$)/gm, '<li>$1</li>')
-            .replace(/\n\n/g, '</p><p>')
-            .replace(/\n/g, '<br>');
-        
-        if (!html.startsWith('<')) html = '<p>' + html + '</p>';
-        html = html.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
-        html = html.replace(/(-\d+\.?\d*)/g, '<span class="highlight">$1</span>');
-        html = html.replace(/(\+\d+\.?\d*)/g, '<span class="positive">$1</span>');
-        
-        return html;
-    },
-
-    /**
-     * Load trades and render overview
-     */
     async loadTrades() {
         const days = document.getElementById('daysSelect').value;
         const tradeList = document.getElementById('tradeList');
-        tradeList.innerHTML = '<div class="loading"><div class="spinner"></div>Loading trades...</div>';
+        tradeList.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
 
         try {
             const data = await API.fetchTrades(days, this.currentSymbol, this.currentExchange);
             Trades.allTrades = data.trades;
-
             Trades.renderStats(Trades.allTrades);
             Trades.renderList(Trades.allTrades);
 
             if (Trades.allTrades.length > 0) {
                 await this.loadOverview(days);
             } else {
-                tradeList.innerHTML = `<div class="empty"><div class="icon">--</div>No ${this.currentSymbol} trades found</div>`;
+                tradeList.innerHTML = `<div class="empty">No ${this.currentSymbol} trades</div>`;
                 KlineChart.setData([]);
                 this.updateHeader(null);
             }
         } catch (e) {
-            tradeList.innerHTML = `<div class="empty"><div class="icon">!</div>Error: ${e.message}</div>`;
+            tradeList.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
         }
     },
 
-    /**
-     * Load overview chart with all trades
-     */
     async loadOverview(days) {
         const data = await API.fetchKlinesRange(days, '1h', this.currentSymbol);
         KlineChart.setData(data.klines);
@@ -483,9 +319,6 @@ const App = {
         this.updateHeader(null);
     },
 
-    /**
-     * Select a trade and show detail view
-     */
     async selectTrade(idx) {
         const t = Trades.allTrades[idx];
         Trades.activeTradeId = idx;
@@ -496,76 +329,43 @@ const App = {
         const padding = isBybit ? 30 * 86400 * 1000 : 12 * 3600 * 1000;
         const startMs = (isBybit ? t.close_ms : t.open_ms) - padding;
         const endMs = t.close_ms + (isBybit ? 12 * 3600 * 1000 : padding);
-        const sym = t.symbol || this.currentSymbol;
-        const ex = t.exchange || '';
-        const data = await API.fetchKlines(startMs, endMs, '5m', sym, ex);
+        const data = await API.fetchKlines(startMs, endMs, '5m', t.symbol || this.currentSymbol, t.exchange || '');
 
         KlineChart.setData(data.klines);
         KlineChart.setMarkers(KlineChart.buildTradeMarkers(t, data.klines));
 
-        const isLong = t.direction === 'long';
-        const lineColor = isLong ? '#00e676' : '#ff5252';
-
-        KlineChart.addPriceLine({
-            price: t.open_price,
-            color: lineColor,
-            lineWidth: 2,
-            lineStyle: 2,
-            axisLabelVisible: true,
-            title: `Entry ${fmtPrice(t.open_price)}`,
-        });
-        KlineChart.addPriceLine({
-            price: t.close_price,
-            color: lineColor,
-            lineWidth: 2,
-            lineStyle: 0,
-            axisLabelVisible: true,
-            title: `Exit ${fmtPrice(t.close_price)}`,
-        });
-
-        KlineChart.setVisibleRange(
-            Math.floor(startMs / 1000),
-            Math.floor(endMs / 1000)
-        );
-
+        const color = t.direction === 'long' ? '#00c853' : '#ff3d3d';
+        KlineChart.addPriceLine({ price: t.open_price, color, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `Entry ${fmtPrice(t.open_price)}` });
+        KlineChart.addPriceLine({ price: t.close_price, color, lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: `Exit ${fmtPrice(t.close_price)}` });
+        KlineChart.setVisibleRange(Math.floor(startMs / 1000), Math.floor(endMs / 1000));
         this.updateHeader(t);
     },
 
-    /**
-     * Back to overview chart
-     */
     async backToOverview() {
         Trades.activeTradeId = -1;
         Trades.highlightCard(-1);
         KlineChart.clearPriceLines();
-        const days = document.getElementById('daysSelect').value;
-        await this.loadOverview(days);
+        await this.loadOverview(document.getElementById('daysSelect').value);
     },
 
-    /**
-     * Update chart header info
-     */
     updateHeader(trade) {
         const el = document.getElementById('chartHeader');
         if (!trade) {
             el.innerHTML = `<span class="info"><strong>${this.currentSymbol}</strong> Overview</span><span class="info">${Trades.allTrades.length} trades</span>`;
             return;
         }
-        const isLong = trade.direction === 'long';
-        const pnlClass = trade.pnl >= 0 ? 'positive' : 'negative';
-        const sym = trade.symbol || this.currentSymbol;
+        const cls = trade.pnl >= 0 ? 'positive' : 'negative';
         el.innerHTML = `
             <span class="info">
                 <button class="back-btn" onclick="App.backToOverview()">&larr; Overview</button>
-                <strong>${sym} ${isLong ? 'LONG' : 'SHORT'} ${trade.leverage}x</strong> &nbsp;|&nbsp;
-                Entry <strong>${fmtPrice(trade.open_price)}</strong> &nbsp;|&nbsp;
-                Exit <strong>${fmtPrice(trade.close_price)}</strong> &nbsp;|&nbsp;
+                <strong>${trade.symbol || this.currentSymbol} ${trade.direction === 'long' ? 'LONG' : 'SHORT'} ${trade.leverage}x</strong> |
+                Entry <strong>${fmtPrice(trade.open_price)}</strong> |
+                Exit <strong>${fmtPrice(trade.close_price)}</strong> |
                 Hold <strong>${trade.hold_hours.toFixed(1)}h</strong>
             </span>
-            <span class="info ${pnlClass}" style="font-weight:700;font-size:14px">${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)} USDT</span>
+            <span class="info ${cls}" style="font-weight:600;font-size:12px">${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}</span>
         `;
     },
 };
 
-// ─── Start ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => App.init());
