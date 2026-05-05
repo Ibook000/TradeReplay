@@ -8,7 +8,7 @@
     <title>Trade Replay</title>
     <script src="/static/js/lightweight-charts.standalone.production.js"></script>
     <script src="/static/js/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=9">
+    <link rel="stylesheet" href="/static/css/style.css?v=14">
 </head>
 <body>
     <div class="app">
@@ -56,6 +56,7 @@
                 <div class="loading"><div class="spinner"></div>Loading...</div>
             </div>
         </div>
+
         <div class="main">
             <div class="chart-header" id="chartHeader">
                 <span class="info">Select a trade to view details</span>
@@ -64,199 +65,220 @@
                 <div id="chart"></div>
             </div>
         </div>
+
+        <!-- Stats Panel -->
+        <div class="side-panel stats-panel" id="statsPanel">
+            <div class="panel-header">
+                <h2>Statistics</h2>
+                <button class="close-btn" id="closeStatsBtn">&times;</button>
+            </div>
+            <div class="panel-content" id="statsContent"></div>
+        </div>
+
+        <!-- AI Panel -->
+        <div class="side-panel ai-panel" id="aiPanel">
+            <div class="panel-header">
+                <h2>AI Coach</h2>
+                <button class="close-btn" id="closeAiPanel">&times;</button>
+            </div>
+            <div class="panel-content" id="aiContent">
+                <div id="aiWeekHeader" style="font-size:10px;color:#5a5a6e;margin-bottom:12px;display:none;">
+                    <span id="aiWeekLabel"></span>
+                    <span id="aiWeekStats" style="margin-left:8px;"></span>
+                </div>
+                <div class="ai-loading" id="aiLoading">
+                    <div class="spinner"></div>
+                    <span>Loading analysis...</span>
+                </div>
+                <div class="ai-result" id="aiResult" style="display: none;"></div>
+                <div id="aiHistorySection" style="margin-top:16px;display:none;">
+                    <div style="font-size:9px;color:#5a5a6e;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;border-top:1px solid #1e1e28;padding-top:12px;">Past Weeks</div>
+                    <div id="aiHistoryList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div class="side-panel settings-panel" id="settingsPanel">
+            <div class="panel-header">
+                <h2>Settings</h2>
+                <button class="close-btn" id="closeSettingsBtn">&times;</button>
+            </div>
+            <div class="panel-content settings-content">
+                <!-- Status Row -->
+                <div class="settings-status-row">
+                    <div class="status-dot-group">
+                        <div class="status-dot" id="okxStatusDot"></div>
+                        <span>OKX</span>
+                    </div>
+                    <div class="status-dot-group">
+                        <div class="status-dot" id="bybitStatusDot"></div>
+                        <span>Bybit</span>
+                    </div>
+                    <div class="status-dot-group">
+                        <div class="status-dot" id="aiStatusDot"></div>
+                        <span>AI</span>
+                    </div>
+                </div>
+
+                <!-- Exchanges Section -->
+                <div class="settings-section">
+                    <div class="settings-section-header" onclick="App.toggleSection('exchanges')">
+                        <span class="section-title">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                            Exchanges
+                        </span>
+                        <svg class="section-arrow" id="exchangesArrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                    <div class="settings-section-body" id="exchangesBody">
+                        <!-- OKX -->
+                        <div class="settings-block">
+                            <div class="settings-block-title">
+                                <span class="tag tag-okx">OKX</span>
+                                API Configuration
+                            </div>
+                            <div class="form-row">
+                                <label>API Key</label>
+                                <div class="input-group">
+                                    <input type="password" id="okxApiKey" placeholder="API Key">
+                                    <button class="eye-btn" onclick="App.togglePassword('okxApiKey')">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="form-hint">Current: <code id="okxKeyMasked">--</code></div>
+                            </div>
+                            <div class="form-row">
+                                <label>Secret Key</label>
+                                <div class="input-group">
+                                    <input type="password" id="okxSecretKey" placeholder="Secret Key">
+                                    <button class="eye-btn" onclick="App.togglePassword('okxSecretKey')">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="form-hint">Current: <code id="okxSecretMasked">--</code></div>
+                            </div>
+                            <div class="form-row">
+                                <label>Passphrase</label>
+                                <div class="input-group">
+                                    <input type="password" id="okxPassphrase" placeholder="Passphrase">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button onclick="App.saveExchangeConfig('okx')" class="btn btn-primary">Save</button>
+                                <button onclick="App.testExchange('okx')" class="btn btn-secondary">Test</button>
+                            </div>
+                            <div class="form-status" id="okxStatus"></div>
+                        </div>
+
+                        <!-- Bybit -->
+                        <div class="settings-block">
+                            <div class="settings-block-title">
+                                <span class="tag tag-bybit">Bybit</span>
+                                API Configuration
+                            </div>
+                            <div class="form-row">
+                                <label>API Key</label>
+                                <div class="input-group">
+                                    <input type="password" id="bybitApiKey" placeholder="API Key">
+                                    <button class="eye-btn" onclick="App.togglePassword('bybitApiKey')">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="form-hint">Current: <code id="bybitKeyMasked">--</code></div>
+                            </div>
+                            <div class="form-row">
+                                <label>Secret Key</label>
+                                <div class="input-group">
+                                    <input type="password" id="bybitSecretKey" placeholder="Secret Key">
+                                    <button class="eye-btn" onclick="App.togglePassword('bybitSecretKey')">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="form-hint">Current: <code id="bybitSecretMasked">--</code></div>
+                            </div>
+                            <div class="form-actions">
+                                <button onclick="App.saveExchangeConfig('bybit')" class="btn btn-primary">Save</button>
+                                <button onclick="App.testExchange('bybit')" class="btn btn-secondary">Test</button>
+                            </div>
+                            <div class="form-status" id="bybitStatus"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Section -->
+                <div class="settings-section">
+                    <div class="settings-section-header" onclick="App.toggleSection('ai')">
+                        <span class="section-title">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 0-4 4v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-2V6a4 4 0 0 0-4-4z"/><circle cx="12" cy="15" r="2"/></svg>
+                            AI Coach
+                        </span>
+                        <svg class="section-arrow" id="aiArrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                    <div class="settings-section-body" id="aiBody">
+                        <div class="settings-block">
+                            <div class="settings-block-title">
+                                <span class="tag tag-ai">AI</span>
+                                LLM Configuration
+                            </div>
+                            <div class="form-row">
+                                <label>Base URL</label>
+                                <div class="input-group">
+                                    <input type="text" id="aiBaseUrl" placeholder="https://api.openai.com/v1">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label>API Key</label>
+                                <div class="input-group">
+                                    <input type="password" id="aiApiKey" placeholder="sk-...">
+                                    <button class="eye-btn" onclick="App.togglePassword('aiApiKey')">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="form-hint">Current: <code id="aiKeyMasked">--</code></div>
+                            </div>
+                            <div class="form-row">
+                                <label>Model</label>
+                                <div class="input-group">
+                                    <input type="text" id="aiModel" placeholder="gpt-4o">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button onclick="App.saveAiConfig()" class="btn btn-primary">Save</button>
+                                <button onclick="App.testAi()" class="btn btn-secondary">Test</button>
+                            </div>
+                            <div class="form-status" id="aiStatus"></div>
+                            <div class="preset-row">
+                                <span class="preset-label">Presets:</span>
+                                <button class="preset-btn" onclick="App.fillAiExample('https://api.deepseek.com/v1', 'deepseek-chat')">DeepSeek</button>
+                                <button class="preset-btn" onclick="App.fillAiExample('https://api.openai.com/v1', 'gpt-4o')">OpenAI</button>
+                                <button class="preset-btn" onclick="App.fillAiExample('https://api.groq.com/openai/v1', 'llama-3.1-70b-versatile')">Groq</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Stats Panel -->
-    <div class="stats-panel" id="statsPanel">
-        <div class="panel-header">
-            <h2>Statistics</h2>
-            <button class="close-btn" id="closeStatsBtn">&times;</button>
-        </div>
-        <div class="panel-content" id="statsContent"></div>
-    </div>
-
-    <!-- AI Panel -->
-    <div class="ai-panel" id="aiPanel">
-        <div class="panel-header">
-            <h2>AI Coach</h2>
-            <div style="display:flex;align-items:center;gap:8px;">
-            </div>
-            <button class="close-btn" id="closeAiPanel">&times;</button>
-        </div>
-        <div class="panel-content" id="aiContent">
-            <div id="aiWeekHeader" style="font-size:10px;color:#5a5a6e;margin-bottom:12px;display:none;">
-                <span id="aiWeekLabel"></span>
-                <span id="aiWeekStats" style="margin-left:8px;"></span>
-            </div>
-            <div class="ai-loading" id="aiLoading">
-                <div class="spinner"></div>
-                <span>Loading analysis...</span>
-            </div>
-            <div class="ai-result" id="aiResult" style="display: none;"></div>
-            <div id="aiHistorySection" style="margin-top:16px;display:none;">
-                <div style="font-size:9px;color:#5a5a6e;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;border-top:1px solid #1e1e28;padding-top:12px;">Past Weeks</div>
-                <div id="aiHistoryList"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Settings Panel -->
-    <div class="settings-panel" id="settingsPanel">
-        <div class="panel-header">
-            <h2>Settings</h2>
-            <button class="close-btn" id="closeSettingsBtn">&times;</button>
-        </div>
-        <div class="panel-content settings-content">
-            <!-- Status Row -->
-            <div class="settings-status-row">
-                <div class="status-dot-group">
-                    <div class="status-dot" id="okxStatusDot"></div>
-                    <span>OKX</span>
-                </div>
-                <div class="status-dot-group">
-                    <div class="status-dot" id="bybitStatusDot"></div>
-                    <span>Bybit</span>
-                </div>
-                <div class="status-dot-group">
-                    <div class="status-dot" id="aiStatusDot"></div>
-                    <span>AI</span>
-                </div>
-            </div>
-
-            <!-- OKX -->
-            <div class="settings-block">
-                <div class="settings-block-title">
-                    <span class="tag tag-okx">OKX</span>
-                    API Configuration
-                </div>
-                <div class="form-row">
-                    <label>API Key</label>
-                    <div class="input-group">
-                        <input type="password" id="okxApiKey" placeholder="API Key">
-                        <button class="eye-btn" onclick="App.togglePassword('okxApiKey')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="form-hint">Current: <code id="okxKeyMasked">--</code></div>
-                </div>
-                <div class="form-row">
-                    <label>Secret Key</label>
-                    <div class="input-group">
-                        <input type="password" id="okxSecretKey" placeholder="Secret Key">
-                        <button class="eye-btn" onclick="App.togglePassword('okxSecretKey')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="form-hint">Current: <code id="okxSecretMasked">--</code></div>
-                </div>
-                <div class="form-row">
-                    <label>Passphrase</label>
-                    <div class="input-group">
-                        <input type="password" id="okxPassphrase" placeholder="Passphrase">
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button onclick="App.saveExchangeConfig('okx')" class="btn btn-primary">Save</button>
-                    <button onclick="App.testExchange('okx')" class="btn btn-secondary">Test</button>
-                </div>
-                <div class="form-status" id="okxStatus"></div>
-            </div>
-
-            <!-- Bybit -->
-            <div class="settings-block">
-                <div class="settings-block-title">
-                    <span class="tag tag-bybit">Bybit</span>
-                    API Configuration
-                </div>
-                <div class="form-row">
-                    <label>API Key</label>
-                    <div class="input-group">
-                        <input type="password" id="bybitApiKey" placeholder="API Key">
-                        <button class="eye-btn" onclick="App.togglePassword('bybitApiKey')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="form-hint">Current: <code id="bybitKeyMasked">--</code></div>
-                </div>
-                <div class="form-row">
-                    <label>Secret Key</label>
-                    <div class="input-group">
-                        <input type="password" id="bybitSecretKey" placeholder="Secret Key">
-                        <button class="eye-btn" onclick="App.togglePassword('bybitSecretKey')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="form-hint">Current: <code id="bybitSecretMasked">--</code></div>
-                </div>
-                <div class="form-actions">
-                    <button onclick="App.saveExchangeConfig('bybit')" class="btn btn-primary">Save</button>
-                    <button onclick="App.testExchange('bybit')" class="btn btn-secondary">Test</button>
-                </div>
-                <div class="form-status" id="bybitStatus"></div>
-            </div>
-
-            <!-- AI -->
-            <div class="settings-block">
-                <div class="settings-block-title">
-                    <span class="tag tag-ai">AI</span>
-                    LLM Configuration
-                </div>
-                <div class="form-row">
-                    <label>Base URL</label>
-                    <div class="input-group">
-                        <input type="text" id="aiBaseUrl" placeholder="https://api.openai.com/v1">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <label>API Key</label>
-                    <div class="input-group">
-                        <input type="password" id="aiApiKey" placeholder="sk-...">
-                        <button class="eye-btn" onclick="App.togglePassword('aiApiKey')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="form-hint">Current: <code id="aiKeyMasked">--</code></div>
-                </div>
-                <div class="form-row">
-                    <label>Model</label>
-                    <div class="input-group">
-                        <input type="text" id="aiModel" placeholder="gpt-4o">
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button onclick="App.saveAiConfig()" class="btn btn-primary">Save</button>
-                    <button onclick="App.testAi()" class="btn btn-secondary">Test</button>
-                </div>
-                <div class="form-status" id="aiStatus"></div>
-                <div class="preset-row">
-                    <span class="preset-label">Presets:</span>
-                    <button class="preset-btn" onclick="App.fillAiExample('https://api.deepseek.com/v1', 'deepseek-chat')">DeepSeek</button>
-                    <button class="preset-btn" onclick="App.fillAiExample('https://api.openai.com/v1', 'gpt-4o')">OpenAI</button>
-                    <button class="preset-btn" onclick="App.fillAiExample('https://api.groq.com/openai/v1', 'llama-3.1-70b-versatile')">Groq</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="/static/js/utils.js?v=9"></script>
-    <script src="/static/js/api.js?v=9"></script>
-    <script src="/static/js/chart.js?v=9"></script>
-    <script src="/static/js/trades.js?v=9"></script>
-    <script src="/static/js/app.js?v=9"></script>
+    <script src="/static/js/utils.js?v=14"></script>
+    <script src="/static/js/api.js?v=14"></script>
+    <script src="/static/js/chart.js?v=14"></script>
+    <script src="/static/js/trades.js?v=14"></script>
+    <script src="/static/js/app.js?v=14"></script>
 </body>
 </html>

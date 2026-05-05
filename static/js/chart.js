@@ -81,7 +81,13 @@ const KlineChart = {
 
     setMarkers(markers) {
         markers.sort((a, b) => a.time - b.time);
+        // Force clear first to prevent any residual markers
+        this.candleSeries.setMarkers([]);
         this.candleSeries.setMarkers(markers);
+    },
+
+    clearMarkers() {
+        this.candleSeries.setMarkers([]);
     },
 
     clearPriceLines() {
@@ -127,12 +133,14 @@ const KlineChart = {
 
     buildOverviewMarkers(trades, klines) {
         const markers = [];
+        const usedTimes = new Set();  // Track used times to avoid stacking
+
         for (const t of trades) {
             const closeSec = Math.floor(t.close_ms / 1000);
             const isLong = t.direction === 'long';
 
             // Find exit candle by time (close_ms is accurate for all exchanges)
-            const exitTime = this._nearestCandleTime(closeSec, klines);
+            let exitTime = this._nearestCandleTime(closeSec, klines);
 
             // Find entry candle by PRICE (backward from close time)
             let anchorIdx = klines.length - 1;
@@ -140,7 +148,24 @@ const KlineChart = {
                 if (klines[i].time >= closeSec) { anchorIdx = i; break; }
             }
             const entryByPrice = this._findCandleByPrice(t.open_price, klines, anchorIdx);
-            const entryTime = entryByPrice || this._nearestCandleTime(Math.floor(t.open_ms / 1000), klines);
+            let entryTime = entryByPrice || this._nearestCandleTime(Math.floor(t.open_ms / 1000), klines);
+
+            // Dedup: avoid stacking on same time as other markers
+            if (usedTimes.has(entryTime)) {
+                const idx = klines.findIndex(k => k.time === entryTime);
+                if (idx > 0) entryTime = klines[idx - 1].time;
+            }
+            if (usedTimes.has(exitTime)) {
+                const idx = klines.findIndex(k => k.time === exitTime);
+                if (idx >= 0 && idx < klines.length - 1) exitTime = klines[idx + 1].time;
+            }
+            if (entryTime === exitTime && klines.length > 1) {
+                const idx = klines.findIndex(k => k.time === exitTime);
+                if (idx >= 0 && idx < klines.length - 1) exitTime = klines[idx + 1].time;
+            }
+
+            usedTimes.add(entryTime);
+            usedTimes.add(exitTime);
 
             // 入场：多单下方↑，空单上方↓
             markers.push({
@@ -193,7 +218,7 @@ const KlineChart = {
         const closeSec = Math.floor(trade.close_ms / 1000);
 
         // Find exit candle (by time — close_ms is accurate)
-        const exitTime = this._nearestCandleTime(closeSec, klines);
+        let exitTime = this._nearestCandleTime(closeSec, klines);
 
         // Find anchor index for backward search
         let anchorIdx = klines.length - 1;
@@ -203,7 +228,17 @@ const KlineChart = {
 
         // Find entry candle by PRICE (backward from close time)
         const entryByPrice = this._findCandleByPrice(trade.open_price, klines, anchorIdx);
-        const entryTime = entryByPrice || this._nearestCandleTime(Math.floor(trade.open_ms / 1000), klines);
+        let entryTime = entryByPrice || this._nearestCandleTime(Math.floor(trade.open_ms / 1000), klines);
+
+        // Dedup: if entry and exit land on same candle, shift exit to next candle
+        if (entryTime === exitTime && klines.length > 1) {
+            const idx = klines.findIndex(k => k.time === exitTime);
+            if (idx >= 0 && idx < klines.length - 1) {
+                exitTime = klines[idx + 1].time;
+            } else if (idx > 0) {
+                entryTime = klines[idx - 1].time;
+            }
+        }
 
         return [
             {

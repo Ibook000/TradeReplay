@@ -26,24 +26,45 @@ const App = {
     },
 
     togglePanel(id) {
-        document.getElementById(id).classList.toggle('open');
-        if (id === 'statsPanel' && document.getElementById(id).classList.contains('open')) {
+        const panel = document.getElementById(id);
+        const wasOpen = panel.classList.contains('open');
+        // Close all other panels first
+        document.querySelectorAll('.side-panel.open').forEach(p => {
+            if (p.id !== id) p.classList.remove('open');
+        });
+        panel.classList.toggle('open', !wasOpen);
+        if (id === 'statsPanel' && !wasOpen) {
             Trades.renderDetailedStats(Trades.allTrades);
         }
+        // Trigger chart resize after panel transition
+        setTimeout(() => KlineChart.resize(), 50);
     },
 
     closePanel(id) {
         document.getElementById(id).classList.remove('open');
+        setTimeout(() => KlineChart.resize(), 50);
     },
 
     async openSettings() {
+        // Close other panels
+        document.querySelectorAll('.side-panel.open').forEach(p => {
+            if (p.id !== 'settingsPanel') p.classList.remove('open');
+        });
         document.getElementById('settingsPanel').classList.add('open');
         await this.loadConfig();
+        setTimeout(() => KlineChart.resize(), 50);
     },
 
     togglePassword(inputId) {
         const input = document.getElementById(inputId);
         input.type = input.type === 'password' ? 'text' : 'password';
+    },
+
+    toggleSection(sectionId) {
+        const section = document.querySelector(`.settings-section:has(#${sectionId}Body)`);
+        if (section) {
+            section.classList.toggle('collapsed');
+        }
     },
 
     async loadConfig() {
@@ -439,6 +460,7 @@ const App = {
         const data = await API.fetchKlines(startMs, endMs, '5m', t.symbol || this.currentSymbol, t.exchange || '');
 
         KlineChart.setData(data.klines);
+        KlineChart.clearMarkers();
         KlineChart.setMarkers(KlineChart.buildTradeMarkers(t, data.klines));
 
         const color = t.direction === 'long' ? '#00c853' : '#ff3d3d';

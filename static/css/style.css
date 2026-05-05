@@ -333,28 +333,32 @@ select:focus { outline: none; border-color: var(--blue); }
     font-size: 11px;
 }
 
-/* ─── Panels ───────────────────────────────────────────────────────────── */
-.stats-panel,
-.ai-panel,
-.settings-panel {
-    display: none;
-    position: fixed;
-    top: 0;
-    right: 0;
-    height: 100vh;
-    height: 100dvh;
+/* ─── Panels (right side, slide animation) ─────────────────────────────── */
+.side-panel {
+    display: flex;
+    flex-direction: column;
     background: var(--bg2);
     border-left: 1px solid var(--border);
-    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    width: 0;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s ease,
+                transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
 }
 
-.stats-panel { width: 400px; z-index: 100; }
-.ai-panel { width: 460px; z-index: 101; }
-.settings-panel { width: 420px; z-index: 102; }
+.side-panel.open {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+}
 
-.stats-panel.open,
-.ai-panel.open,
-.settings-panel.open { display: flex; }
+.stats-panel.open { width: 400px; }
+.ai-panel.open { width: 460px; }
+.settings-panel.open { width: 420px; }
 
 .panel-header {
     display: flex;
@@ -496,6 +500,63 @@ select:focus { outline: none; border-color: var(--blue); }
 .tag-okx { background: rgba(154, 154, 160, 0.1); color: var(--okx); }
 .tag-bybit { background: rgba(247, 166, 0, 0.1); color: var(--bybit); }
 .tag-ai { background: var(--purple-dim); color: var(--purple); }
+
+/* ─── Settings Sections (Collapsible) ─────────────────────────────────── */
+.settings-section {
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.settings-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--bg2);
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition);
+}
+
+.settings-section-header:hover {
+    background: var(--bg3);
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.section-title svg {
+    color: var(--text3);
+}
+
+.section-arrow {
+    color: var(--text3);
+    transition: transform 0.2s ease;
+}
+
+.settings-section.collapsed .section-arrow {
+    transform: rotate(-90deg);
+}
+
+.settings-section-body {
+    padding: 8px;
+    background: var(--bg);
+    transition: max-height 0.3s ease;
+}
+
+.settings-section.collapsed .settings-section-body {
+    display: none;
+}
 
 .form-row { margin-bottom: 10px; }
 
@@ -751,7 +812,22 @@ select:focus { outline: none; border-color: var(--blue); }
         min-height: 0;
     }
     .chart-container { min-height: 200px; }
-    .stats-panel, .ai-panel, .settings-panel { width: 100%; }
+    /* On mobile, panels overlay instead of pushing */
+    .side-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 0 !important;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 100;
+        border-left: 1px solid var(--border);
+        transform: translateX(100%);
+    }
+    .side-panel.open {
+        width: 100% !important;
+        transform: translateX(0);
+    }
     .trade-card .details { font-size: 9px; }
     .trade-card .details .val { font-size: 8px; }
 }
