@@ -13,6 +13,10 @@ Multi-exchange contract trade replay tool — visualize your closed positions on
 ### Statistics — Equity curve, daily PnL, distribution
 ![Stats](screenshots/stats.png)
 
+## Architecture
+
+![Architecture](screenshots/architecture.png)
+
 ## Features
 
 - Multi-exchange support (OKX, Bybit) with unified data format
@@ -23,14 +27,41 @@ Multi-exchange contract trade replay tool — visualize your closed positions on
 - Multi-symbol support with dropdown selector
 - Dark theme, mobile responsive
 - Beijing time (UTC+8) display
+- PostgreSQL database for persistent storage
+- Daily auto-refresh scheduler (03:00)
 
-## Architecture
+## Architecture Details
+
+### Frontend Layer
+- Single Page Application (SPA)
+- LightweightCharts.js for K-line rendering
+- Real-time trade markers with entry/exit arrows
+- Responsive dark theme UI
+- Multi-symbol dropdown selector
+
+### Backend Layer
+- FastAPI (Python) REST API
+- Modular design: main.py, cache.py, klines.py
+- Exchange adapters with unified interface
+- Background scheduler (daily refresh at 03:00)
+- Auto-merge new trades without duplicates
+
+### Data Layer
+- PostgreSQL 15 for persistent storage
+- OKX + Bybit for trade data
+- Binance as K-line fallback source
+- Price-based entry K-line matching
+- Timestamp-based exit K-line alignment
+
+## Project Structure
 
 ```
 TradeReplay/
 ├── main.py              # FastAPI routes
 ├── cache.py             # Trade data persistence & background refresh
 ├── klines.py            # K-line fetchers (Binance, OKX, Bybit)
+├── database.py          # PostgreSQL database operations
+├── schema.sql           # Database schema
 ├── exchanges/
 │   ├── __init__.py      # Unified trade fetching interface
 │   ├── keys.py.example  # API key template
@@ -45,7 +76,9 @@ TradeReplay/
 │       ├── chart.js     # LightweightCharts K-line + markers
 │       ├── trades.js    # Trade list & stats rendering
 │       └── app.js       # Main app logic
-└── data/                # Cached trade data (auto-generated)
+├── docs/
+│   └── architecture.html  # Architecture diagram source
+└── screenshots/         # Project screenshots
 ```
 
 ## Setup
@@ -71,7 +104,23 @@ cp exchanges/keys.py.example exchanges/keys.py
 # Edit .env with your actual API keys
 ```
 
-4. Run:
+4. Setup PostgreSQL:
+
+```bash
+# Install PostgreSQL
+sudo apt install postgresql postgresql-contrib
+
+# Create database and user
+sudo -u postgres psql
+CREATE USER tradereplay WITH PASSWORD 'your_password';
+CREATE DATABASE tradereplay OWNER tradereplay;
+\q
+
+# Run schema
+psql -U tradereplay -d tradereplay -f schema.sql
+```
+
+5. Run:
 
 ```bash
 python main.py
@@ -91,8 +140,9 @@ Open http://localhost:80 in your browser.
 
 ## Tech Stack
 
-- **Backend**: Python, FastAPI, httpx
+- **Backend**: Python, FastAPI, httpx, asyncpg
 - **Frontend**: Vanilla JS, LightweightCharts, Chart.js
+- **Database**: PostgreSQL 15
 - **Data Sources**: OKX API, Bybit API, Binance API (K-lines)
 
 ## License
