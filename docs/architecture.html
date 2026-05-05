@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TradeReplay Architecture</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#020617;color:#e2e8f0;font-family:'JetBrains Mono',monospace;padding:40px}
+.header{text-align:center;margin-bottom:30px}
+.header h1{font-size:20px;font-weight:700;color:#c8a24c;letter-spacing:2px}
+.header p{font-size:10px;color:#64748b;margin-top:6px}
+.card{background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:30px;margin-bottom:24px;overflow-x:auto}
+.card-header{display:flex;align-items:center;gap:8px;margin-bottom:20px}
+.card-dot{width:8px;height:8px;border-radius:50%}
+.card-dot.cyan{background:#22d3ee}
+.card-dot.emerald{background:#34d399}
+.card-dot.amber{background:#fbbf24}
+.card-dot.violet{background:#a78bfa}
+.card-header h3{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1.5px}
+.grid-bg{fill:url(#grid)}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>TRADEREPLAY ARCHITECTURE</h1>
+<p>Multi-Exchange Contract Trade Replay System</p>
+</div>
+<div class="card">
+<div class="card-header"><div class="card-dot cyan"></div><h3>System Architecture</h3></div>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" viewBox="0 0 960 620">
+<defs>
+<pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/></pattern>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/></marker>
+<marker id="arrow-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#22d3ee"/></marker>
+<marker id="arrow-emerald" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#34d399"/></marker>
+</defs>
+<rect width="960" height="620" fill="#020617"/>
+<rect width="960" height="620" fill="url(#grid)"/>
+
+<!-- Frontend Layer -->
+<rect x="20" y="20" width="920" height="150" rx="8" fill="rgba(8,51,68,0.3)" stroke="#22d3ee" stroke-width="1"/>
+<text x="36" y="42" font-size="9" fill="#22d3ee" font-weight="700" letter-spacing="1.5">FRONTEND</text>
+<rect x="36" y="56" width="130" height="50" rx="6" fill="#0f172a" stroke="#22d3ee" stroke-width="1.5"/>
+<text x="101" y="78" font-size="11" fill="#e2e8f0" text-anchor="middle" font-weight="700">index.html</text>
+<text x="101" y="94" font-size="8" fill="#64748b" text-anchor="middle">SPA Entry</text>
+
+<rect x="190" y="56" width="130" height="50" rx="6" fill="#0f172a" stroke="#22d3ee" stroke-width="1.5"/>
+<text x="255" y="78" font-size="11" fill="#e2e8f0" text-anchor="middle" font-weight="700">app.js</text>
+<text x="255" y="94" font-size="8" fill="#64748b" text-anchor="middle">Main Logic</text>
+
+<rect x="344" y="56" width="130" height="50" rx="6" fill="#0f172a" stroke="#34d399" stroke-width="1.5"/>
+<text x="409" y="78" font-size="11" fill="#e2e8f0" text-anchor="middle" font-weight="700">chart.js</text>
+<text x="409" y="94" font-size="8" fill="#64748b" text-anchor="middle">K-line Rendering</text>
+
+<rect x="498" y="56" width="130" height="50" rx="6" fill="#0f172a" stroke="#34d399" stroke-width="1.5"/>
+<text x="563" y="78" font-size="11" fill="#e2e8f0" text-anchor="middle" font-weight="700">trades.js</text>
+<text x="563" y="94" font-size="8" fill="#64748b" text-anchor="middle">Trade List</text>
+
+<rect x="652" y="56" width="130" height="50" rx="6" fill="#0f172a" stroke="#22d3ee" stroke-width="1.5"/>
+<text x="717" y="78" font-size="11" fill="#e2e8f0" text-anchor="middle" font-weight="700">api.js</text>
+<text x="717" y="94" font-size="8" fill="#64748b" text-anchor="middle">REST Client</text>
+
+<rect x="806" y="56" width="118" height="50" rx="6" fill="#0f172a" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="865" y="78" font-size="10" fill="#e2e8f0" text-anchor="middle" font-weight="700">Libraries</text>
+<text x="865" y="94" font-size="7" fill="#64748b" text-anchor="middle">LightweightCharts | Chart.js</text>
+
+<text x="480" y="135" font-size="8" fill="#475569" text-anchor="middle">Single Page App  |  Dark Theme  |  Mobile Responsive  |  UTC+8</text>
+
+<!-- Arrows frontend -->
+<line x1="166" y1="81" x2="190" y2="81" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="320" y1="81" x2="344" y2="81" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="320" y1="81" x2="344" y2="81" stroke="#475569" stroke-width="1.5"/>
+<line x1="474" y1="81" x2="498" y2="81" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="628" y1="81" x2="652" y2="81" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="782" y1="81" x2="806" y2="81" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+<!-- REST API connection -->
+<line x1="480" y1="180" x2="480" y2="210" stroke="#22d3ee" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow-cyan)"/>
+<line x1="480" y1="180" x2="480" y2="210" stroke="#22d3ee" stroke-width="2" stroke-dasharray="6,3"/>
+<text x="496" y="200" font-size="10" fill="#22d3ee" font-weight="700">REST API</text>
+
+<!-- Backend Layer -->
+<rect x="20" y="215" width="920" height="170" rx="8" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1"/>
+<text x="36" y="237" font-size="9" fill="#34d399" font-weight="700" letter-spacing="1.5">BACKEND  (Python / FastAPI / Uvicorn)</text>
+
+<rect x="36" y="252" width="140" height="56" rx="6" fill="#0f172a" stroke="#34d399" stroke-width="1.5"/>
+<text x="106" y="276" font-size="11" fill="#e2e8f0" text-anchor="middle" font-weight="700">main.py</text>
+<text x="106" y="292" font-size="8" fill="#64748b" text-anchor="middle">FastAPI Routes :80</text>
+
+<rect x="200" y="252" width="150" height="56" rx="6" fill="#0f172a" stroke="#34d399" stroke-width="1.5"/>
+<text x="275" y="276" font-size="11" fill="#e2e8f0" text-anchor="middle" font-weight="700">cache.py</text>
+<text x="275" y="292" font-size="8" fill="#64748b" text-anchor="middle">Trade Cache + Daily 03:00</text>
+
+<rect x="374" y="252" width="140" height="56" rx="6" fill="#0f172a" stroke="#34d399" stroke-width="1.5"/>
+<text x="444" y="276" font-size="11" fill="#e2e8f0" text-anchor="middle" font-weight="700">klines.py</text>
+<text x="444" y="292" font-size="8" fill="#64748b" text-anchor="middle">K-line Fetcher</text>
+
+<rect x="538" y="252" width="140" height="56" rx="6" fill="#0f172a" stroke="#34d399" stroke-width="1.5"/>
+<text x="608" y="276" font-size="11" fill="#e2e8f0" text-anchor="middle" font-weight="700">database.py</text>
+<text x="608" y="292" font-size="8" fill="#64748b" text-anchor="middle">PostgreSQL Ops</text>
+
+<rect x="702" y="252" width="120" height="56" rx="6" fill="#0f172a" stroke="#fbbf24" stroke-width="1.5"/>
+<text x="762" y="276" font-size="11" fill="#e2e8f0" text-anchor="middle" font-weight="700">exchanges/</text>
+<text x="762" y="292" font-size="8" fill="#64748b" text-anchor="middle">okx.py | bybit.py</text>
+
+<rect x="846" y="252" width="78" height="56" rx="6" fill="#0f172a" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="885" y="276" font-size="10" fill="#e2e8f0" text-anchor="middle" font-weight="700">AI Coach</text>
+<text x="885" y="292" font-size="7" fill="#64748b" text-anchor="middle">DeepSeek</text>
+
+<text x="480" y="338" font-size="8" fill="#475569" text-anchor="middle">Auto-merge without duplicates  |  Price-based entry detection  |  Timestamp exit alignment  |  K-line source fallback</text>
+
+<!-- Backend arrows -->
+<line x1="176" y1="280" x2="200" y2="280" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="350" y1="280" x2="374" y2="280" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="514" y1="280" x2="538" y2="280" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="678" y1="280" x2="702" y2="280" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+<!-- Backend to Data arrow -->
+<line x1="480" y1="395" x2="480" y2="425" stroke="#34d399" stroke-width="2" stroke-dasharray="6,3"/>
+<text x="496" y="416" font-size="10" fill="#34d399" font-weight="700">SQL / HTTP</text>
+
+<!-- Data Layer -->
+<rect x="20" y="430" width="920" height="170" rx="8" fill="rgba(76,29,149,0.3)" stroke="#a78bfa" stroke-width="1"/>
+<text x="36" y="452" font-size="9" fill="#a78bfa" font-weight="700" letter-spacing="1.5">DATA LAYER</text>
+
+<rect x="36" y="468" width="160" height="56" rx="6" fill="#0f172a" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="116" y="492" font-size="12" fill="#e2e8f0" text-anchor="middle" font-weight="700">PostgreSQL</text>
+<text x="116" y="508" font-size="8" fill="#64748b" text-anchor="middle">tradereplay | trades table</text>
+
+<rect x="230" y="468" width="140" height="56" rx="6" fill="#0f172a" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="300" y="492" font-size="12" fill="#e2e8f0" text-anchor="middle" font-weight="700">OKX API</text>
+<text x="300" y="508" font-size="8" fill="#64748b" text-anchor="middle">Closed PnL + K-lines</text>
+
+<rect x="404" y="468" width="140" height="56" rx="6" fill="#0f172a" stroke="#fbbf24" stroke-width="1.5"/>
+<text x="474" y="492" font-size="12" fill="#e2e8f0" text-anchor="middle" font-weight="700">Bybit API</text>
+<text x="474" y="508" font-size="8" fill="#64748b" text-anchor="middle">Closed PnL + K-lines</text>
+
+<rect x="578" y="468" width="140" height="56" rx="6" fill="#0f172a" stroke="#fbbf24" stroke-width="1.5"/>
+<text x="648" y="492" font-size="12" fill="#e2e8f0" text-anchor="middle" font-weight="700">Binance API</text>
+<text x="648" y="508" font-size="8" fill="#64748b" text-anchor="middle">K-line Fallback</text>
+
+<rect x="752" y="468" width="140" height="56" rx="6" fill="#0f172a" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="822" y="492" font-size="12" fill="#e2e8f0" text-anchor="middle" font-weight="700">DeepSeek API</text>
+<text x="822" y="508" font-size="8" fill="#64748b" text-anchor="middle">AI Trade Analysis</text>
+
+<!-- Features -->
+<rect x="36" y="548" width="892" height="36" rx="6" fill="rgba(15,23,42,0.8)" stroke="#1e293b" stroke-width="1"/>
+<text x="62" y="570" font-size="8" fill="#94a3b8">Multi-Symbol</text>
+<text x="172" y="570" font-size="8" fill="#94a3b8">Trade Markers</text>
+<text x="288" y="570" font-size="8" fill="#94a3b8">Equity Curve</text>
+<text x="402" y="570" font-size="8" fill="#94a3b8">Daily PnL</text>
+<text x="496" y="570" font-size="8" fill="#a78bfa" font-weight="700">AI Coach</text>
+<text x="580" y="570" font-size="8" fill="#94a3b8">Auto Refresh</text>
+<text x="686" y="570" font-size="8" fill="#94a3b8">Mobile</text>
+<text x="748" y="570" font-size="8" fill="#94a3b8">Dark Theme</text>
+<text x="840" y="570" font-size="8" fill="#94a3b8">MIT License</text>
+</svg>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+<div class="card" style="margin-bottom:0">
+<div class="card-header"><div class="card-dot cyan"></div><h3>Frontend</h3></div>
+<ul style="font-size:10px;color:#94a3b8;line-height:2;list-style:none">
+<li>- Vanilla JS SPA, no framework</li>
+<li>- LightweightCharts (TradingView)</li>
+<li>- Chart.js for statistics</li>
+<li>- Responsive dark theme</li>
+</ul>
+</div>
+<div class="card" style="margin-bottom:0">
+<div class="card-header"><div class="card-dot emerald"></div><h3>Backend</h3></div>
+<ul style="font-size:10px;color:#94a3b8;line-height:2;list-style:none">
+<li>- FastAPI + Uvicorn</li>
+<li>- Async HTTP (httpx)</li>
+<li>- PostgreSQL (psycopg2)</li>
+<li>- Background scheduler</li>
+</ul>
+</div>
+<div class="card" style="margin-bottom:0">
+<div class="card-header"><div class="card-dot amber"></div><h3>Data Sources</h3></div>
+<ul style="font-size:10px;color:#94a3b8;line-height:2;list-style:none">
+<li>- OKX: trade + K-line data</li>
+<li>- Bybit: trade + K-line data</li>
+<li>- Binance: K-line fallback</li>
+<li>- DeepSeek: AI analysis</li>
+</ul>
+</div>
+</div>
+</body>
+</html>

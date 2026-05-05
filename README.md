@@ -2,6 +2,24 @@
 
 Multi-exchange contract trade replay tool — visualize your closed positions on K-line charts with entry/exit markers.
 
+## Screenshots
+
+### Overview — K-line chart with trade markers
+![Overview](screenshots/overview.png)
+
+### Trade Detail — Entry/exit price lines on K-lines
+![Detail](screenshots/detail.png)
+
+### Statistics — Equity curve, daily PnL, distribution
+![Stats](screenshots/stats.png)
+
+### AI Analysis — AI Trading Coach
+![AI Analysis](screenshots/ai-analysis.png)
+
+## Architecture
+
+![Architecture](screenshots/architecture.png)
+
 ## Features
 
 - Multi-exchange support (OKX, Bybit) with unified data format

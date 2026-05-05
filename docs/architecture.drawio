@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-05-05T12:00:00.000Z" agent="TradeReplay" version="21.0.0">
+  <diagram name="Architecture" id="arch">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Background -->
+        <mxCell id="bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0a0a0f;strokeColor=none;arcSize=4;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1200" height="800" as="geometry"/>
+        </mxCell>
+
+        <!-- Title -->
+        <mxCell id="title" value="TradeReplay Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontColor=#c8a24c;fontStyle=1;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Frontend Layer -->
+        <mxCell id="fe_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#141419;strokeColor=#28283a;strokeWidth=1;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="1120" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="fe_label" value="FRONTEND" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#5a5a6e;fontStyle=1;letterSpacing=2;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="60" y="85" width="100" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="spa" value="&lt;b&gt;SPA&lt;/b&gt;&lt;br&gt;index.html" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#2979ff;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="70" y="120" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="appjs" value="&lt;b&gt;app.js&lt;/b&gt;&lt;br&gt;Main Logic" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#2979ff;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="210" y="120" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="chartjs" value="&lt;b&gt;chart.js&lt;/b&gt;&lt;br&gt;K-line Rendering" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#00c853;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="350" y="120" width="130" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="tradesjs" value="&lt;b&gt;trades.js&lt;/b&gt;&lt;br&gt;Trade List" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#00c853;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="500" y="120" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="apijs" value="&lt;b&gt;api.js&lt;/b&gt;&lt;br&gt;REST Client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#2979ff;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="640" y="120" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="lwc" value="&lt;b&gt;LightweightCharts&lt;/b&gt;&lt;br&gt;TradingView" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#7c4dff;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="780" y="120" width="140" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="chartjslib" value="&lt;b&gt;Chart.js&lt;/b&gt;&lt;br&gt;Statistics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#7c4dff;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="940" y="120" width="120" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="fe_arw1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#5a5a6e;strokeWidth=1;endArrow=block;endFill=1;" edge="1" source="spa" target="appjs" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fe_arw2" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#5a5a6e;strokeWidth=1;endArrow=block;endFill=1;" edge="1" source="appjs" target="chartjs" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fe_arw3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#5a5a6e;strokeWidth=1;endArrow=block;endFill=1;" edge="1" source="appjs" target="tradesjs" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fe_arw4" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#5a5a6e;strokeWidth=1;endArrow=block;endFill=1;" edge="1" source="chartjs" target="lwc" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fe_arw5" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#5a5a6e;strokeWidth=1;endArrow=block;endFill=1;" edge="1" source="tradesjs" target="chartjslib" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="fe_desc" value="Single Page App &amp;nbsp;|&amp;nbsp; Dark Theme &amp;nbsp;|&amp;nbsp; Mobile Responsive &amp;nbsp;|&amp;nbsp; UTC+8" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=9;fontColor=#5a5a6e;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="70" y="185" width="1060" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow: Frontend → Backend -->
+        <mxCell id="fb_arrow" value="REST API" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#2979ff;fontStyle=1;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="530" y="265" width="140" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="fb_line" style="strokeColor=#2979ff;strokeWidth=2;endArrow=block;endFill=1;startArrow=block;startFill=1;dashed=1;dashPattern=8 4;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="275" as="sourcePoint"/>
+            <mxPoint x="800" y="275" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Backend Layer -->
+        <mxCell id="be_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#141419;strokeColor=#28283a;strokeWidth=1;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="1120" height="200" as="geometry"/>
+        </mxCell>
+        <mxCell id="be_label" value="BACKEND  (Python / FastAPI)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#5a5a6e;fontStyle=1;letterSpacing=2;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="60" y="305" width="250" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mainpy" value="&lt;b&gt;main.py&lt;/b&gt;&lt;br&gt;FastAPI Routes&lt;br&gt;Uvicorn :80" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#c8a24c;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="70" y="340" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="cachepy" value="&lt;b&gt;cache.py&lt;/b&gt;&lt;br&gt;Trade Cache&lt;br&gt;Daily Refresh 03:00" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#c8a24c;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="230" y="340" width="150" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="klinespy" value="&lt;b&gt;klines.py&lt;/b&gt;&lt;br&gt;K-line Fetcher&lt;br&gt;Auto Fallback" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#c8a24c;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="400" y="340" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="dbpy" value="&lt;b&gt;database.py&lt;/b&gt;&lt;br&gt;PostgreSQL Ops" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#c8a24c;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="560" y="340" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="exchanges" value="&lt;b&gt;exchanges/&lt;/b&gt;&lt;br&gt;okx.py | bybit.py&lt;br&gt;Unified Interface" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#f7a600;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="720" y="340" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ai_endpoint" value="&lt;b&gt;AI Coach&lt;/b&gt;&lt;br&gt;DeepSeek API&lt;br&gt;Trade Analysis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#7c4dff;fontSize=11;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="900" y="340" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="be_arw1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#5a5a6e;strokeWidth=1;endArrow=block;endFill=1;" edge="1" source="mainpy" target="cachepy" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="be_arw2" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#5a5a6e;strokeWidth=1;endArrow=block;endFill=1;" edge="1" source="cachepy" target="dbpy" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="be_arw3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#5a5a6e;strokeWidth=1;endArrow=block;endFill=1;" edge="1" source="mainpy" target="klinespy" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="be_arw4" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#5a5a6e;strokeWidth=1;endArrow=block;endFill=1;" edge="1" source="cachepy" target="exchanges" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="be_desc" value="Auto-merge trades without duplicates &amp;nbsp;|&amp;nbsp; Price-based entry detection &amp;nbsp;|&amp;nbsp; Timestamp-based exit alignment" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=9;fontColor=#5a5a6e;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="70" y="415" width="1060" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow: Backend → Data -->
+        <mxCell id="bd_arrow" value="" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#c8a24c;fontStyle=1;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="530" y="500" width="140" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="bd_line" style="strokeColor=#c8a24c;strokeWidth=2;endArrow=block;endFill=1;startArrow=block;startFill=1;dashed=1;dashPattern=8 4;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="510" as="sourcePoint"/>
+            <mxPoint x="800" y="510" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Data Layer -->
+        <mxCell id="data_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#141419;strokeColor=#28283a;strokeWidth=1;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="530" width="1120" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="data_label" value="DATA LAYER" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#5a5a6e;fontStyle=1;letterSpacing=2;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="60" y="535" width="120" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="pg" value="&lt;b&gt;PostgreSQL&lt;/b&gt;&lt;br&gt;tradereplay&lt;br&gt;trades table" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#2979ff;fontSize=12;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="70" y="570" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="okx" value="&lt;b&gt;OKX API&lt;/b&gt;&lt;br&gt;Closed PnL&lt;br&gt;K-lines" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#9a9aa0;fontSize=12;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="310" y="570" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="bybit" value="&lt;b&gt;Bybit API&lt;/b&gt;&lt;br&gt;Closed PnL&lt;br&gt;K-lines" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#f7a600;fontSize=12;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="510" y="570" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="binance" value="&lt;b&gt;Binance API&lt;/b&gt;&lt;br&gt;K-line Fallback" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#f7a600;fontSize=12;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="710" y="570" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="deepseek" value="&lt;b&gt;DeepSeek API&lt;/b&gt;&lt;br&gt;AI Analysis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a25;strokeColor=#7c4dff;fontSize=12;fontColor=#e1e1e6;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="910" y="570" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Fallback arrow -->
+        <mxCell id="fb1" value="fallback" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=8;fontColor=#5a5a6e;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="650" y="580" width="60" height="15" as="geometry"/>
+        </mxCell>
+
+        <!-- Data descriptions -->
+        <mxCell id="pg_desc" value="Indexed by symbol, exchange, close_ms" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=8;fontColor=#5a5a6e;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="70" y="635" width="160" height="15" as="geometry"/>
+        </mxCell>
+
+        <!-- Features row -->
+        <mxCell id="feat1" value="Multi-Symbol" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0f0f14;strokeColor=#1e1e28;fontSize=9;fontColor=#8a8a9a;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="70" y="680" width="100" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="feat2" value="Trade Markers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0f0f14;strokeColor=#1e1e28;fontSize=9;fontColor=#8a8a9a;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="190" y="680" width="100" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="feat3" value="Equity Curve" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0f0f14;strokeColor=#1e1e28;fontSize=9;fontColor=#8a8a9a;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="310" y="680" width="100" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="feat4" value="Daily PnL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0f0f14;strokeColor=#1e1e28;fontSize=9;fontColor=#8a8a9a;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="430" y="680" width="100" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="feat5" value="AI Coach" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0f0f14;strokeColor=#7c4dff;fontSize=9;fontColor=#8a8a9a;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="550" y="680" width="100" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="feat6" value="Auto Refresh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0f0f14;strokeColor=#1e1e28;fontSize=9;fontColor=#8a8a9a;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="670" y="680" width="100" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="feat7" value="Mobile" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0f0f14;strokeColor=#1e1e28;fontSize=9;fontColor=#8a8a9a;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="790" y="680" width="100" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="feat8" value="Dark Theme" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0f0f14;strokeColor=#1e1e28;fontSize=9;fontColor=#8a8a9a;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="910" y="680" width="100" height="35" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
