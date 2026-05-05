@@ -2,13 +2,24 @@
 
 Multi-exchange contract trade replay tool — visualize your closed positions on K-line charts with entry/exit markers.
 
+## Screenshots
+
+### Overview — K-line chart with trade markers
+![Overview](screenshots/overview.png)
+
+### Trade Detail — Entry/exit price lines on 5m K-lines
+![Detail](screenshots/detail.png)
+
+### Statistics — Equity curve, daily PnL, distribution
+![Stats](screenshots/stats.png)
+
 ## Features
 
 - Multi-exchange support (OKX, Bybit) with unified data format
 - K-line chart with entry/exit markers (LightweightCharts)
 - Price-based entry detection for Bybit trades
 - Auto fallback across K-line data sources (Binance → OKX → Bybit)
-- Statistics panel with PnL, win rate, hold time analysis
+- Statistics panel with equity curve, daily PnL, PnL distribution
 - Multi-symbol support with dropdown selector
 - Dark theme, mobile responsive
 - Beijing time (UTC+8) display
