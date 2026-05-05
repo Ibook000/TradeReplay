@@ -29,7 +29,7 @@ def binance_sym(symbol: str) -> str:
 
 # ─── Unified K-line format ──────────────────────────────────────────────
 def _to_kline(time_ms, o, h, l, c, v) -> dict:
-    return {"time": time_ms // 1000, "open": float(o), "high": float(h),
+    return {"time": int(time_ms) // 1000, "open": float(o), "high": float(h),
             "low": float(l), "close": float(c), "volume": float(v)}
 
 

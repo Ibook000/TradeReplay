@@ -8,7 +8,7 @@
     <title>Trade Replay</title>
     <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=2">
+    <link rel="stylesheet" href="/static/css/style.css?v=3">
 </head>
 <body>
     <div class="app">
@@ -35,6 +35,7 @@
                     </select>
                     <button id="refreshBtn">Refresh</button>
                     <button id="statsBtn" class="stats-toggle">Stats</button>
+                    <button id="aiAnalyzeBtn" class="ai-btn">AI分析</button>
                 </div>
                 <div class="stats" id="stats"></div>
             </div>
@@ -63,10 +64,27 @@
         </div>
     </div>
 
-    <script src="/static/js/utils.js?v=2"></script>
-    <script src="/static/js/api.js?v=2"></script>
-    <script src="/static/js/chart.js?v=2"></script>
-    <script src="/static/js/trades.js?v=2"></script>
-    <script src="/static/js/app.js?v=2"></script>
+    <!-- AI Analysis Panel (overlay) -->
+    <div class="ai-panel" id="aiPanel">
+        <div class="ai-panel-header">
+            <h2>AI 交易教练</h2>
+            <button class="close-btn" id="closeAiPanel">&times;</button>
+        </div>
+        <div class="ai-panel-content" id="aiContent">
+            <div class="ai-loading" id="aiLoading">
+                <div class="spinner"></div>
+                <span>AI 正在分析你的交易数据...</span>
+            </div>
+            <div class="ai-result" id="aiResult" style="display: none;">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/utils.js?v=3"></script>
+    <script src="/static/js/api.js?v=3"></script>
+    <script src="/static/js/chart.js?v=3"></script>
+    <script src="/static/js/trades.js?v=3"></script>
+    <script src="/static/js/app.js?v=3"></script>
 </body>
 </html>

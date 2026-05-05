@@ -23,6 +23,10 @@ const App = {
         // Stats panel toggle
         document.getElementById('statsBtn').addEventListener('click', () => this.toggleStatsPanel());
         document.getElementById('closeStatsBtn').addEventListener('click', () => this.closeStatsPanel());
+        
+        // AI analysis
+        document.getElementById('aiAnalyzeBtn').addEventListener('click', () => this.runAiAnalysis());
+        document.getElementById('closeAiPanel').addEventListener('click', () => this.closeAiPanel());
     },
 
     /**
@@ -78,6 +82,7 @@ const App = {
 
         // Close stats panel if open
         this.closeStatsPanel();
+        this.closeAiPanel();
 
         // Reload trades
         await this.loadTrades();
@@ -100,6 +105,108 @@ const App = {
      */
     closeStatsPanel() {
         document.getElementById('statsPanel').classList.remove('open');
+    },
+
+    /**
+     * Close AI panel
+     */
+    closeAiPanel() {
+        document.getElementById('aiPanel').classList.remove('open');
+    },
+
+    /**
+     * Run AI analysis on current trades
+     */
+    async runAiAnalysis() {
+        const btn = document.getElementById('aiAnalyzeBtn');
+        const panel = document.getElementById('aiPanel');
+        const loading = document.getElementById('aiLoading');
+        const result = document.getElementById('aiResult');
+        
+        // Check if we have trades
+        if (!Trades.allTrades || Trades.allTrades.length === 0) {
+            alert('No trades to analyze');
+            return;
+        }
+        
+        // Show panel and loading state
+        panel.classList.add('open');
+        loading.style.display = 'flex';
+        result.style.display = 'none';
+        btn.disabled = true;
+        btn.textContent = '分析中...';
+        
+        try {
+            const days = document.getElementById('daysSelect').value;
+            const response = await fetch('/api/ai_analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    trades: Trades.allTrades,
+                    symbol: this.currentSymbol,
+                    days: parseInt(days)
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                result.innerHTML = `<div class="highlight">Error: ${data.error}</div>`;
+            } else {
+                // Parse and render the AI analysis
+                result.innerHTML = this.formatAiAnalysis(data.analysis);
+            }
+            
+            loading.style.display = 'none';
+            result.style.display = 'block';
+            
+        } catch (e) {
+            result.innerHTML = `<div class="highlight">Failed to get AI analysis: ${e.message}</div>`;
+            loading.style.display = 'none';
+            result.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'AI分析';
+        }
+    },
+
+    /**
+     * Format AI analysis text to HTML
+     */
+    formatAiAnalysis(text) {
+        // Convert markdown-like formatting to HTML
+        let html = text
+            // Headers
+            .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gm, '<h3>$1</h3>')
+            .replace(/^# (.*$)/gm, '<h3>$1</h3>')
+            // Bold
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            // Lists
+            .replace(/^\- (.*$)/gm, '<li>$1</li>')
+            .replace(/^\* (.*$)/gm, '<li>$1</li>')
+            // Paragraphs
+            .replace(/\n\n/g, '</p><p>')
+            // Line breaks
+            .replace(/\n/g, '<br>');
+        
+        // Wrap in paragraph if not starting with a tag
+        if (!html.startsWith('<')) {
+            html = '<p>' + html + '</p>';
+        }
+        
+        // Wrap lists
+        html = html.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
+        
+        // Highlight negative numbers
+        html = html.replace(/(-\d+\.?\d*)/g, '<span class="highlight">$1</span>');
+        
+        // Highlight positive numbers with +
+        html = html.replace(/(\+\d+\.?\d*)/g, '<span class="positive">$1</span>');
+        
+        return html;
     },
 
     /**

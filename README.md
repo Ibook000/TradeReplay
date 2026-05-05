@@ -13,6 +13,9 @@ Multi-exchange contract trade replay tool — visualize your closed positions on
 ### Statistics — Equity curve, daily PnL, distribution
 ![Stats](screenshots/stats.png)
 
+### AI Analysis — AI Trading Coach
+![AI Analysis](screenshots/ai-analysis.png)
+
 ## Architecture
 
 ![Architecture](screenshots/architecture.png)
@@ -24,6 +27,7 @@ Multi-exchange contract trade replay tool — visualize your closed positions on
 - Price-based entry detection for Bybit trades
 - Auto fallback across K-line data sources (Binance → OKX → Bybit)
 - Statistics panel with equity curve, daily PnL, PnL distribution
+- **AI Trading Coach** - DeepSeek AI analyzes your trades with harsh but constructive feedback
 - Multi-symbol support with dropdown selector
 - Dark theme, mobile responsive
 - Beijing time (UTC+8) display
@@ -53,11 +57,18 @@ Multi-exchange contract trade replay tool — visualize your closed positions on
 - Price-based entry K-line matching
 - Timestamp-based exit K-line alignment
 
+### AI Analysis
+- DeepSeek AI integration for trade analysis
+- Harsh but constructive feedback on trading patterns
+- Identifies repeated mistakes and bad habits
+- Provides actionable improvement suggestions
+- Chinese language output for native speakers
+
 ## Project Structure
 
 ```
 TradeReplay/
-├── main.py              # FastAPI routes
+├── main.py              # FastAPI routes + AI analysis endpoint
 ├── cache.py             # Trade data persistence & background refresh
 ├── klines.py            # K-line fetchers (Binance, OKX, Bybit)
 ├── database.py          # PostgreSQL database operations
@@ -75,7 +86,7 @@ TradeReplay/
 │       ├── api.js       # API client
 │       ├── chart.js     # LightweightCharts K-line + markers
 │       ├── trades.js    # Trade list & stats rendering
-│       └── app.js       # Main app logic
+│       └── app.js       # Main app logic + AI analysis UI
 ├── docs/
 │   └── architecture.html  # Architecture diagram source
 └── screenshots/         # Project screenshots
@@ -120,7 +131,14 @@ CREATE DATABASE tradereplay OWNER tradereplay;
 psql -U tradereplay -d tradereplay -f schema.sql
 ```
 
-5. Run:
+5. Configure DeepSeek API (for AI analysis):
+
+```bash
+# Add to .env file
+DEEPSEEK_API_KEY=sk-your-deepseek-api-key
+```
+
+6. Run:
 
 ```bash
 python main.py
@@ -137,12 +155,14 @@ Open http://localhost:80 in your browser.
 | OKX | `OKX_PASSPHRASE` | Passphrase |
 | Bybit | `BYBIT_API_KEY` | API key |
 | Bybit | `BYBIT_SECRET_KEY` | Secret key |
+| DeepSeek | `DEEPSEEK_API_KEY` | AI analysis API key |
 
 ## Tech Stack
 
 - **Backend**: Python, FastAPI, httpx, asyncpg
 - **Frontend**: Vanilla JS, LightweightCharts, Chart.js
 - **Database**: PostgreSQL 15
+- **AI**: DeepSeek API for trade analysis
 - **Data Sources**: OKX API, Bybit API, Binance API (K-lines)
 
 ## License
