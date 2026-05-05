@@ -5,25 +5,38 @@
     --bg2: #101018;
     --bg3: #16161f;
     --bg4: #1c1c28;
+    --bg5: #222230;
     --border: #22222e;
     --border2: #2a2a3a;
+    --border3: #333345;
     --text: #d4d4dc;
     --text2: #6e6e82;
     --text3: #4a4a5e;
+    --text4: #3a3a4e;
     --green: #2ecc71;
     --green-dim: rgba(46, 204, 113, 0.12);
+    --green-glow: rgba(46, 204, 113, 0.3);
     --red: #e74c3c;
     --red-dim: rgba(231, 76, 60, 0.12);
     --blue: #3b82f6;
     --blue-dim: rgba(59, 130, 246, 0.10);
+    --blue-glow: rgba(59, 130, 246, 0.3);
     --gold: #d4a843;
     --gold-dim: rgba(212, 168, 67, 0.08);
     --purple: #8b5cf6;
     --purple-dim: rgba(139, 92, 246, 0.10);
+    --purple-glow: rgba(139, 92, 246, 0.3);
+    --okx: #ffffff;
+    --okx-dim: rgba(255, 255, 255, 0.06);
+    --bybit: #f7a600;
+    --bybit-dim: rgba(247, 166, 0, 0.08);
     --radius: 8px;
     --radius-sm: 5px;
+    --radius-lg: 12px;
     --shadow: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-lg: 0 4px 20px rgba(0,0,0,0.4);
     --transition: 0.2s ease;
+    --transition-slow: 0.3s ease;
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────── */
@@ -213,6 +226,7 @@ body {
 .controls button.settings-btn:hover {
     color: var(--text);
     border-color: var(--border2);
+    background: var(--bg4);
 }
 
 /* ─── Stats Summary ────────────────────────────────────────────────────── */
@@ -321,12 +335,12 @@ body {
     letter-spacing: 0.5px;
 }
 .trade-card .exchange.okx {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--okx-dim);
     color: var(--text2);
 }
 .trade-card .exchange.bybit {
-    background: rgba(255, 179, 0, 0.08);
-    color: #cc9200;
+    background: var(--bybit-dim);
+    color: var(--bybit);
 }
 .trade-card .pnl {
     font-size: 13px;
@@ -441,7 +455,7 @@ body {
     border-left: 1px solid var(--border);
     z-index: 1000;
     flex-direction: column;
-    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-lg);
 }
 .stats-panel.open { display: flex; }
 .stats-panel-header {
@@ -502,7 +516,7 @@ body {
     border-left: 1px solid var(--border);
     z-index: 1001;
     flex-direction: column;
-    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-lg);
 }
 .ai-panel.open { display: flex; }
 .ai-panel-header {
@@ -594,28 +608,37 @@ body {
     position: fixed;
     top: 0;
     right: 0;
-    width: 420px;
+    width: 480px;
     height: 100vh;
     height: 100dvh;
     background: var(--bg2);
     border-left: 1px solid var(--border);
     z-index: 1002;
     flex-direction: column;
-    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-lg);
 }
 .settings-panel.open { display: flex; }
 .settings-panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 20px;
+    padding: 16px 24px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
-    background: var(--blue-dim);
+    background: linear-gradient(135deg, var(--bg3) 0%, var(--bg2) 100%);
+}
+.settings-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.settings-icon {
+    font-size: 20px;
+    opacity: 0.8;
 }
 .settings-panel-header h2 {
-    font-size: 12px;
-    color: var(--blue);
+    font-size: 14px;
+    color: var(--text);
     letter-spacing: 1px;
     text-transform: uppercase;
     font-weight: 600;
@@ -623,51 +646,146 @@ body {
 .settings-panel-content {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    padding: 20px 24px;
     -webkit-overflow-scrolling: touch;
 }
 .settings-panel-content::-webkit-scrollbar { width: 3px; }
 .settings-panel-content::-webkit-scrollbar-track { background: transparent; }
 .settings-panel-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-.settings-section {
+/* ─── Settings Status Overview ─────────────────────────────────────────── */
+.settings-status-overview {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
     margin-bottom: 24px;
 }
-.settings-title {
+.status-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--transition);
+}
+.status-card:hover {
+    border-color: var(--border2);
+    background: var(--bg4);
+}
+.status-card.configured {
+    border-color: var(--green);
+    background: var(--green-dim);
+}
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text4);
+    transition: all var(--transition);
+}
+.status-card.configured .status-indicator {
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green-glow);
+}
+.status-name {
     font-size: 11px;
-    color: var(--text);
     font-weight: 600;
+    color: var(--text2);
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+}
+.status-text {
+    font-size: 9px;
+    color: var(--text4);
+}
+.status-card.configured .status-text {
+    color: var(--green);
+}
+
+/* ─── Settings Section ─────────────────────────────────────────────────── */
+.settings-section {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: all var(--transition);
+}
+.settings-section:hover {
+    border-color: var(--border2);
+}
+.settings-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--bg4);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.settings-section-header:hover {
+    background: var(--bg5);
+}
+.settings-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
 }
+.settings-section-toggle {
+    color: var(--text3);
+    font-size: 10px;
+    transition: transform var(--transition);
+}
+.settings-section.collapsed .settings-section-toggle {
+    transform: rotate(-90deg);
+}
+.settings-section-content {
+    padding: 16px;
+    transition: all var(--transition-slow);
+}
+.settings-section.collapsed .settings-section-content {
+    display: none;
+}
+
+/* ─── Exchange Badge ───────────────────────────────────────────────────── */
 .exchange-badge {
     font-size: 9px;
     font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 3px;
+    padding: 3px 8px;
+    border-radius: 4px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 .exchange-badge.okx {
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text2);
+    background: var(--okx-dim);
+    color: var(--okx);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 .exchange-badge.bybit {
-    background: rgba(255, 179, 0, 0.08);
-    color: #cc9200;
+    background: var(--bybit-dim);
+    color: var(--bybit);
+    border: 1px solid rgba(247, 166, 0, 0.2);
 }
 .exchange-badge.ai {
     background: var(--purple-dim);
     color: var(--purple);
+    border: 1px solid rgba(139, 92, 246, 0.2);
 }
+
+/* ─── Settings Form Elements ───────────────────────────────────────────── */
 .settings-note {
     font-size: 11px;
     color: var(--text3);
     margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
 }
 
 .settings-group {
@@ -675,35 +793,61 @@ body {
 }
 .settings-group label {
     display: block;
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text2);
-    font-weight: 500;
+    font-weight: 600;
     margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
-.settings-group input {
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.input-wrapper input {
     width: 100%;
-    background: var(--bg3);
+    background: var(--bg);
     border: 1px solid var(--border);
     color: var(--text);
     padding: 10px 12px;
+    padding-right: 40px;
     border-radius: var(--radius-sm);
     font-size: 12px;
-    font-family: inherit;
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
     transition: all var(--transition);
 }
-.settings-group input:focus {
+.input-wrapper input:focus {
     outline: none;
     border-color: var(--blue);
+    box-shadow: 0 0 0 2px var(--blue-dim);
 }
-.settings-group input::placeholder {
+.input-wrapper input::placeholder {
+    color: var(--text4);
+    font-family: inherit;
+}
+.input-toggle {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
     color: var(--text3);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 12px;
+    transition: color var(--transition);
+}
+.input-toggle:hover {
+    color: var(--text);
 }
 .settings-hint {
     font-size: 10px;
-    color: var(--text3);
-    margin-top: 4px;
+    color: var(--text4);
+    margin-top: 6px;
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
 }
 
+/* ─── Settings Actions ─────────────────────────────────────────────────── */
 .settings-actions {
     display: flex;
     gap: 8px;
@@ -719,44 +863,76 @@ body {
     font-family: inherit;
     transition: all var(--transition);
     letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.btn-icon {
+    font-size: 12px;
 }
 .settings-actions .save-btn {
-    background: var(--blue);
+    background: linear-gradient(135deg, var(--blue) 0%, #2563eb 100%);
     border: 1px solid var(--blue);
     color: white;
+    box-shadow: 0 2px 8px var(--blue-dim);
 }
 .settings-actions .save-btn:hover {
-    background: #2563eb;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    box-shadow: 0 4px 12px var(--blue-glow);
+    transform: translateY(-1px);
 }
 .settings-actions .test-btn {
-    background: var(--bg3);
+    background: var(--bg);
     border: 1px solid var(--border);
     color: var(--text2);
 }
 .settings-actions .test-btn:hover {
     border-color: var(--border2);
     color: var(--text);
+    background: var(--bg4);
 }
 
 .settings-status {
     margin-top: 12px;
     font-size: 11px;
     min-height: 20px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition);
 }
 .settings-status.success {
     color: var(--green);
+    background: var(--green-dim);
+    border: 1px solid rgba(46, 204, 113, 0.2);
 }
 .settings-status.error {
     color: var(--red);
+    background: var(--red-dim);
+    border: 1px solid rgba(231, 76, 60, 0.2);
 }
 
+/* ─── Settings Examples ────────────────────────────────────────────────── */
 .settings-examples {
-    display: flex;
-    flex-direction: column;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+.examples-title {
+    font-size: 10px;
+    color: var(--text3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+.examples-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
 }
 .example-item {
-    background: var(--bg3);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 10px 12px;
@@ -764,19 +940,20 @@ body {
     transition: all var(--transition);
 }
 .example-item:hover {
-    border-color: var(--border2);
-    background: var(--bg4);
+    border-color: var(--blue);
+    background: var(--blue-dim);
+    transform: translateY(-1px);
 }
-.example-item strong {
-    display: block;
+.example-name {
     font-size: 11px;
-    color: var(--text);
     font-weight: 600;
+    color: var(--text);
     margin-bottom: 2px;
 }
-.example-item span {
-    font-size: 10px;
+.example-detail {
+    font-size: 9px;
     color: var(--text3);
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
 }
 
 /* ─── Stats Sections ───────────────────────────────────────────────────── */

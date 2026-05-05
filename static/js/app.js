@@ -55,15 +55,42 @@ const App = {
             // OKX
             document.getElementById('okxKeyMasked').textContent = data.okx.api_key || '未配置';
             document.getElementById('okxSecretMasked').textContent = data.okx.secret_key || '未配置';
+            const okxCard = document.getElementById('okxStatusCard');
+            const okxText = document.getElementById('okxStatusText');
+            if (data.okx.configured) {
+                okxCard.classList.add('configured');
+                okxText.textContent = '已配置';
+            } else {
+                okxCard.classList.remove('configured');
+                okxText.textContent = '未配置';
+            }
             
             // Bybit
             document.getElementById('bybitKeyMasked').textContent = data.bybit.api_key || '未配置';
             document.getElementById('bybitSecretMasked').textContent = data.bybit.secret_key || '未配置';
+            const bybitCard = document.getElementById('bybitStatusCard');
+            const bybitText = document.getElementById('bybitStatusText');
+            if (data.bybit.configured) {
+                bybitCard.classList.add('configured');
+                bybitText.textContent = '已配置';
+            } else {
+                bybitCard.classList.remove('configured');
+                bybitText.textContent = '未配置';
+            }
             
             // AI
             document.getElementById('aiBaseUrl').value = data.ai.base_url || '';
             document.getElementById('aiModel').value = data.ai.model || '';
             document.getElementById('aiKeyMasked').textContent = data.ai.api_key || '未配置';
+            const aiCard = document.getElementById('aiStatusCard');
+            const aiText = document.getElementById('aiStatusText');
+            if (data.ai.configured) {
+                aiCard.classList.add('configured');
+                aiText.textContent = '已配置';
+            } else {
+                aiCard.classList.remove('configured');
+                aiText.textContent = '未配置';
+            }
         } catch (e) {
             console.error('Failed to load config:', e);
         }
@@ -242,6 +269,29 @@ const App = {
     fillAiExample(url, model) {
         document.getElementById('aiBaseUrl').value = url;
         document.getElementById('aiModel').value = model;
+    },
+
+    /**
+     * Toggle password visibility
+     */
+    togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        const btn = input.nextElementSibling;
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = '🙈';
+        } else {
+            input.type = 'password';
+            btn.textContent = '👁';
+        }
+    },
+
+    /**
+     * Toggle settings section collapse
+     */
+    toggleSection(section) {
+        const el = document.getElementById(`${section}Section`).parentElement;
+        el.classList.toggle('collapsed');
     },
 
     /**
