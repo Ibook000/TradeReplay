@@ -22,6 +22,17 @@ EXCHANGES = {
 }
 
 
+def reinit_exchanges():
+    """Reinitialize exchange connections after config change."""
+    import importlib
+    from . import okx, bybit
+    importlib.reload(okx)
+    importlib.reload(bybit)
+    # Update the registry with reloaded functions
+    EXCHANGES["OKX"] = okx.fetch_okx_trades
+    EXCHANGES["Bybit"] = bybit.fetch_bybit_trades
+
+
 async def get_all_trades(days: int = 30) -> list[dict]:
     """Fetch trades from all registered exchanges in parallel."""
     import asyncio

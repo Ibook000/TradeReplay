@@ -38,6 +38,27 @@ def _extract_symbol(raw_symbol: str) -> str:
     return raw_symbol
 
 
+# ─── Test Connection ──────────────────────────────────────────────────────
+async def test_connection() -> dict:
+    """Test Bybit API connection."""
+    try:
+        path = "/v5/account/wallet-balance"
+        params = "accountType=UNIFIED"
+        query = params
+        headers = _headers(query)
+        
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{BASE_URL}{path}?{query}", headers=headers, timeout=10)
+            data = resp.json()
+        
+        if data.get("retCode") == 0:
+            return {"status": "ok", "message": "Bybit connection successful"}
+        else:
+            return {"status": "error", "message": f"Bybit error: {data.get('retMsg', 'Unknown error')}"}
+    except Exception as e:
+        return {"status": "error", "message": f"Bybit connection failed: {str(e)}"}
+
+
 # ─── Fetch ────────────────────────────────────────────────────────────────
 async def fetch_bybit_trades(days: int = 30) -> list[dict]:
     """Fetch all closed PnL records from Bybit V5 API (multi-symbol, 7-day chunks).

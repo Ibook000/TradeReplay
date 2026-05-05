@@ -12,7 +12,7 @@ const App = {
         KlineChart.init(document.getElementById('chart'));
         this.bindEvents();
         await this.loadSymbols();
-        this.loadAiConfig();
+        this.loadConfig();
     },
 
     /**
@@ -34,16 +34,6 @@ const App = {
         // Settings
         document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
         document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closeSettings());
-        document.getElementById('saveSettingsBtn').addEventListener('click', () => this.saveSettings());
-        document.getElementById('testSettingsBtn').addEventListener('click', () => this.testSettings());
-        
-        // Example items click
-        document.querySelectorAll('.example-item').forEach(item => {
-            item.addEventListener('click', () => {
-                document.getElementById('aiBaseUrl').value = item.dataset.url;
-                document.getElementById('aiModel').value = item.dataset.model;
-            });
-        });
     },
 
     /**
@@ -55,17 +45,27 @@ const App = {
     },
 
     /**
-     * Load AI configuration
+     * Load all configuration
      */
-    async loadAiConfig() {
+    async loadConfig() {
         try {
-            const resp = await fetch('/api/ai_config');
+            const resp = await fetch('/api/config');
             const data = await resp.json();
-            document.getElementById('aiBaseUrl').value = data.base_url || '';
-            document.getElementById('aiModel').value = data.model || '';
-            document.getElementById('apiKeyMasked').textContent = data.api_key_masked || '未配置';
+            
+            // OKX
+            document.getElementById('okxKeyMasked').textContent = data.okx.api_key || '未配置';
+            document.getElementById('okxSecretMasked').textContent = data.okx.secret_key || '未配置';
+            
+            // Bybit
+            document.getElementById('bybitKeyMasked').textContent = data.bybit.api_key || '未配置';
+            document.getElementById('bybitSecretMasked').textContent = data.bybit.secret_key || '未配置';
+            
+            // AI
+            document.getElementById('aiBaseUrl').value = data.ai.base_url || '';
+            document.getElementById('aiModel').value = data.ai.model || '';
+            document.getElementById('aiKeyMasked').textContent = data.ai.api_key || '未配置';
         } catch (e) {
-            console.error('Failed to load AI config:', e);
+            console.error('Failed to load config:', e);
         }
     },
 
@@ -74,7 +74,7 @@ const App = {
      */
     openSettings() {
         document.getElementById('settingsPanel').classList.add('open');
-        this.loadAiConfig();
+        this.loadConfig();
     },
 
     /**
@@ -85,19 +85,26 @@ const App = {
     },
 
     /**
-     * Save AI settings
+     * Save exchange configuration
      */
-    async saveSettings() {
-        const baseUrl = document.getElementById('aiBaseUrl').value.trim();
-        const apiKey = document.getElementById('aiApiKey').value.trim();
-        const model = document.getElementById('aiModel').value.trim();
-        const status = document.getElementById('settingsStatus');
+    async saveExchangeConfig(exchange) {
+        const status = document.getElementById(`${exchange}Status`);
+        
+        const body = {};
+        if (exchange === 'okx') {
+            body.okx_api_key = document.getElementById('okxApiKey').value.trim();
+            body.okx_secret_key = document.getElementById('okxSecretKey').value.trim();
+            body.okx_passphrase = document.getElementById('okxPassphrase').value.trim();
+        } else if (exchange === 'bybit') {
+            body.bybit_api_key = document.getElementById('bybitApiKey').value.trim();
+            body.bybit_secret_key = document.getElementById('bybitSecretKey').value.trim();
+        }
         
         try {
-            const resp = await fetch('/api/ai_config', {
+            const resp = await fetch('/api/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ base_url: baseUrl, api_key: apiKey, model: model })
+                body: JSON.stringify(body)
             });
             
             const data = await resp.json();
@@ -105,10 +112,16 @@ const App = {
             if (data.status === 'ok') {
                 status.textContent = '✓ 配置已保存';
                 status.className = 'settings-status success';
-                // Clear the API key input for security
-                document.getElementById('aiApiKey').value = '';
-                // Reload config to show masked key
-                this.loadAiConfig();
+                // Clear inputs for security
+                if (exchange === 'okx') {
+                    document.getElementById('okxApiKey').value = '';
+                    document.getElementById('okxSecretKey').value = '';
+                    document.getElementById('okxPassphrase').value = '';
+                } else {
+                    document.getElementById('bybitApiKey').value = '';
+                    document.getElementById('bybitSecretKey').value = '';
+                }
+                this.loadConfig();
             } else {
                 status.textContent = '✗ 保存失败';
                 status.className = 'settings-status error';
@@ -120,21 +133,84 @@ const App = {
     },
 
     /**
+     * Save AI configuration
+     */
+    async saveAiConfig() {
+        const status = document.getElementById('aiStatus');
+        
+        const body = {
+            ai_base_url: document.getElementById('aiBaseUrl').value.trim(),
+            ai_api_key: document.getElementById('aiApiKey').value.trim(),
+            ai_model: document.getElementById('aiModel').value.trim(),
+        };
+        
+        try {
+            const resp = await fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            
+            const data = await resp.json();
+            
+            if (data.status === 'ok') {
+                status.textContent = '✓ 配置已保存';
+                status.className = 'settings-status success';
+                document.getElementById('aiApiKey').value = '';
+                this.loadConfig();
+            } else {
+                status.textContent = '✗ 保存失败';
+                status.className = 'settings-status error';
+            }
+        } catch (e) {
+            status.textContent = '✗ 保存失败: ' + e.message;
+            status.className = 'settings-status error';
+        }
+    },
+
+    /**
+     * Test exchange connection
+     */
+    async testExchange(exchange) {
+        const status = document.getElementById(`${exchange}Status`);
+        status.textContent = '测试中...';
+        status.className = 'settings-status';
+        
+        try {
+            const resp = await fetch('/api/test_exchange', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ exchange })
+            });
+            
+            const data = await resp.json();
+            
+            if (data.status === 'ok') {
+                status.textContent = '✓ ' + data.message;
+                status.className = 'settings-status success';
+            } else {
+                status.textContent = '✗ ' + data.message;
+                status.className = 'settings-status error';
+            }
+        } catch (e) {
+            status.textContent = '✗ 测试失败: ' + e.message;
+            status.className = 'settings-status error';
+        }
+    },
+
+    /**
      * Test AI connection
      */
-    async testSettings() {
-        const status = document.getElementById('settingsStatus');
-        const btn = document.getElementById('testSettingsBtn');
-        
-        btn.disabled = true;
-        btn.textContent = '测试中...';
-        status.textContent = '';
+    async testAi() {
+        const status = document.getElementById('aiStatus');
+        status.textContent = '测试中...';
+        status.className = 'settings-status';
         
         try {
             // Save first
-            await this.saveSettings();
+            await this.saveAiConfig();
             
-            // Then test with a simple request
+            // Test with a simple request
             const resp = await fetch('/api/ai_analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -157,10 +233,15 @@ const App = {
         } catch (e) {
             status.textContent = '✗ 测试失败: ' + e.message;
             status.className = 'settings-status error';
-        } finally {
-            btn.disabled = false;
-            btn.textContent = '测试连接';
         }
+    },
+
+    /**
+     * Fill AI example values
+     */
+    fillAiExample(url, model) {
+        document.getElementById('aiBaseUrl').value = url;
+        document.getElementById('aiModel').value = model;
     },
 
     /**
@@ -209,15 +290,9 @@ const App = {
     async switchSymbol(symbol) {
         if (symbol === this.currentSymbol) return;
         this.currentSymbol = symbol;
-
-        // Update select value
         document.getElementById('symbolSelect').value = symbol;
-
-        // Close stats panel if open
         this.closeStatsPanel();
         this.closeAiPanel();
-
-        // Reload trades
         await this.loadTrades();
     },
 
@@ -227,7 +302,6 @@ const App = {
     toggleStatsPanel() {
         const panel = document.getElementById('statsPanel');
         panel.classList.toggle('open');
-
         if (panel.classList.contains('open')) {
             Trades.renderDetailedStats(Trades.allTrades);
         }
@@ -256,13 +330,11 @@ const App = {
         const loading = document.getElementById('aiLoading');
         const result = document.getElementById('aiResult');
         
-        // Check if we have trades
         if (!Trades.allTrades || Trades.allTrades.length === 0) {
             alert('No trades to analyze');
             return;
         }
         
-        // Show panel and loading state
         panel.classList.add('open');
         loading.style.display = 'flex';
         result.style.display = 'none';
@@ -273,9 +345,7 @@ const App = {
             const days = document.getElementById('daysSelect').value;
             const response = await fetch('/api/ai_analyze', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     trades: Trades.allTrades,
                     symbol: this.currentSymbol,
@@ -288,13 +358,11 @@ const App = {
             if (data.error) {
                 result.innerHTML = `<div class="highlight">${data.error}</div>`;
             } else {
-                // Parse and render the AI analysis
                 result.innerHTML = this.formatAiAnalysis(data.analysis);
             }
             
             loading.style.display = 'none';
             result.style.display = 'block';
-            
         } catch (e) {
             result.innerHTML = `<div class="highlight">Failed to get AI analysis: ${e.message}</div>`;
             loading.style.display = 'none';
@@ -309,34 +377,19 @@ const App = {
      * Format AI analysis text to HTML
      */
     formatAiAnalysis(text) {
-        // Convert markdown-like formatting to HTML
         let html = text
-            // Headers
             .replace(/^### (.*$)/gm, '<h3>$1</h3>')
             .replace(/^## (.*$)/gm, '<h3>$1</h3>')
             .replace(/^# (.*$)/gm, '<h3>$1</h3>')
-            // Bold
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            // Lists
             .replace(/^\- (.*$)/gm, '<li>$1</li>')
             .replace(/^\* (.*$)/gm, '<li>$1</li>')
-            // Paragraphs
             .replace(/\n\n/g, '</p><p>')
-            // Line breaks
             .replace(/\n/g, '<br>');
         
-        // Wrap in paragraph if not starting with a tag
-        if (!html.startsWith('<')) {
-            html = '<p>' + html + '</p>';
-        }
-        
-        // Wrap lists
+        if (!html.startsWith('<')) html = '<p>' + html + '</p>';
         html = html.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
-        
-        // Highlight negative numbers
         html = html.replace(/(-\d+\.?\d*)/g, '<span class="highlight">$1</span>');
-        
-        // Highlight positive numbers with +
         html = html.replace(/(\+\d+\.?\d*)/g, '<span class="positive">$1</span>');
         
         return html;
@@ -361,7 +414,6 @@ const App = {
                 await this.loadOverview(days);
             } else {
                 tradeList.innerHTML = `<div class="empty"><div class="icon">--</div>No ${this.currentSymbol} trades found</div>`;
-                // Clear chart
                 KlineChart.setData([]);
                 this.updateHeader(null);
             }
@@ -390,8 +442,6 @@ const App = {
         Trades.highlightCard(idx);
         KlineChart.clearPriceLines();
 
-        // Fetch fine 5m K-lines for accurate markers
-        // Bybit: open_ms is actually close time, need wider window to find entry price
         const isBybit = t.exchange === 'Bybit';
         const padding = isBybit ? 30 * 86400 * 1000 : 12 * 3600 * 1000;
         const startMs = (isBybit ? t.close_ms : t.open_ms) - padding;
@@ -403,7 +453,6 @@ const App = {
         KlineChart.setData(data.klines);
         KlineChart.setMarkers(KlineChart.buildTradeMarkers(t, data.klines));
 
-        // Price lines
         const isLong = t.direction === 'long';
         const lineColor = isLong ? '#00e676' : '#ff5252';
 
@@ -411,7 +460,7 @@ const App = {
             price: t.open_price,
             color: lineColor,
             lineWidth: 2,
-            lineStyle: 2,  // dashed
+            lineStyle: 2,
             axisLabelVisible: true,
             title: `Entry ${fmtPrice(t.open_price)}`,
         });
@@ -419,12 +468,11 @@ const App = {
             price: t.close_price,
             color: lineColor,
             lineWidth: 2,
-            lineStyle: 0,  // solid
+            lineStyle: 0,
             axisLabelVisible: true,
             title: `Exit ${fmtPrice(t.close_price)}`,
         });
 
-        // Zoom to trade window
         KlineChart.setVisibleRange(
             Math.floor(startMs / 1000),
             Math.floor(endMs / 1000)

@@ -39,6 +39,15 @@ load_from_disk()
 start_daily_scheduler()
 
 
+def _mask_key(key: str) -> str:
+    """Mask API key for display."""
+    if not key:
+        return ""
+    if len(key) > 8:
+        return key[:4] + "..." + key[-4:]
+    return "***"
+
+
 # ─── API Endpoints ───────────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
 async def index():
@@ -105,36 +114,39 @@ async def get_klines_range(
     return {"klines": klines, "interval": interval, "count": len(klines)}
 
 
-@app.get("/api/ai_config")
-async def get_ai_config():
-    """Get current AI configuration (masked key)."""
-    api_key = os.getenv("AI_API_KEY", "")
-    base_url = os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1")
-    model = os.getenv("AI_MODEL", "deepseek-chat")
-    
-    # Mask the API key
-    masked_key = ""
-    if api_key:
-        if len(api_key) > 8:
-            masked_key = api_key[:4] + "..." + api_key[-4:]
-        else:
-            masked_key = "***"
+@app.get("/api/config")
+async def get_config():
+    """Get all configuration (masked keys)."""
+    # Reload keys from env
+    from exchanges import keys
+    import importlib
+    importlib.reload(keys)
     
     return {
-        "base_url": base_url,
-        "model": model,
-        "api_key_masked": masked_key,
-        "configured": bool(api_key)
+        "okx": {
+            "api_key": _mask_key(keys.OKX_API_KEY),
+            "secret_key": _mask_key(keys.OKX_SECRET_KEY),
+            "passphrase": keys.OKX_PASSPHRASE,
+            "configured": bool(keys.OKX_API_KEY)
+        },
+        "bybit": {
+            "api_key": _mask_key(keys.BYBIT_API_KEY),
+            "secret_key": _mask_key(keys.BYBIT_SECRET_KEY),
+            "configured": bool(keys.BYBIT_API_KEY)
+        },
+        "ai": {
+            "base_url": os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1"),
+            "model": os.getenv("AI_MODEL", "deepseek-chat"),
+            "api_key": _mask_key(os.getenv("AI_API_KEY", "")),
+            "configured": bool(os.getenv("AI_API_KEY", ""))
+        }
     }
 
 
-@app.post("/api/ai_config")
-async def update_ai_config(request: Request):
-    """Update AI configuration."""
+@app.post("/api/config")
+async def update_config(request: Request):
+    """Update configuration."""
     body = await request.json()
-    base_url = body.get("base_url", "")
-    api_key = body.get("api_key", "")
-    model = body.get("model", "")
     
     env_path = Path(__file__).parent / ".env"
     
@@ -143,23 +155,39 @@ async def update_ai_config(request: Request):
     if env_path.exists():
         env_content = env_path.read_text()
     
-    # Update or add AI config
+    # Define all possible config keys
+    config_map = {
+        # OKX
+        "OKX_API_KEY": body.get("okx_api_key", ""),
+        "OKX_SECRET_KEY": body.get("okx_secret_key", ""),
+        "OKX_PASSPHRASE": body.get("okx_passphrase", ""),
+        # Bybit
+        "BYBIT_API_KEY": body.get("bybit_api_key", ""),
+        "BYBIT_SECRET_KEY": body.get("bybit_secret_key", ""),
+        # AI
+        "AI_BASE_URL": body.get("ai_base_url", ""),
+        "AI_API_KEY": body.get("ai_api_key", ""),
+        "AI_MODEL": body.get("ai_model", ""),
+    }
+    
+    # Update or add config
     lines = env_content.split("\n")
     new_lines = []
-    keys_to_update = {"AI_BASE_URL": base_url, "AI_API_KEY": api_key, "AI_MODEL": model}
     updated_keys = set()
     
     for line in lines:
         key = line.split("=")[0].strip() if "=" in line else ""
-        if key in keys_to_update:
-            if keys_to_update[key]:  # Only update if value is provided
-                new_lines.append(f"{key}={keys_to_update[key]}")
+        if key in config_map:
+            if config_map[key]:  # Only update if value is provided
+                new_lines.append(f"{key}={config_map[key]}")
                 updated_keys.add(key)
+            else:
+                new_lines.append(line)  # Keep existing value
         else:
             new_lines.append(line)
     
     # Add any new keys that weren't in the file
-    for key, value in keys_to_update.items():
+    for key, value in config_map.items():
         if key not in updated_keys and value:
             new_lines.append(f"{key}={value}")
     
@@ -169,7 +197,32 @@ async def update_ai_config(request: Request):
     # Reload environment
     load_dotenv(env_path, override=True)
     
-    return {"status": "ok", "message": "AI configuration updated"}
+    # Reinitialize exchange connections
+    from exchanges import reinit_exchanges
+    reinit_exchanges()
+    
+    return {"status": "ok", "message": "Configuration updated"}
+
+
+@app.post("/api/test_exchange")
+async def test_exchange(request: Request):
+    """Test exchange connection."""
+    body = await request.json()
+    exchange = body.get("exchange", "").lower()
+    
+    try:
+        if exchange == "okx":
+            from exchanges.okx import test_connection
+            result = await test_connection()
+            return result
+        elif exchange == "bybit":
+            from exchanges.bybit import test_connection
+            result = await test_connection()
+            return result
+        else:
+            return {"status": "error", "message": "Unknown exchange"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 @app.post("/api/ai_analyze")

@@ -41,6 +41,24 @@ def _extract_symbol(inst_id: str) -> str:
     return parts[0] if parts else inst_id
 
 
+# ─── Test Connection ──────────────────────────────────────────────────────
+async def test_connection() -> dict:
+    """Test OKX API connection."""
+    try:
+        path = "/api/v5/account/balance"
+        headers = _headers("GET", path)
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{BASE_URL}{path}", headers=headers, timeout=10)
+            data = resp.json()
+        
+        if data.get("code") == "0":
+            return {"status": "ok", "message": "OKX connection successful"}
+        else:
+            return {"status": "error", "message": f"OKX error: {data.get('msg', 'Unknown error')}"}
+    except Exception as e:
+        return {"status": "error", "message": f"OKX connection failed: {str(e)}"}
+
+
 # ─── Fetch ────────────────────────────────────────────────────────────────
 async def fetch_okx_trades(days: int = 30) -> list[dict]:
     """Fetch all closed SWAP positions from OKX (multi-symbol).

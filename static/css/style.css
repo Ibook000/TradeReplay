@@ -640,6 +640,29 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.8px;
     margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.exchange-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.exchange-badge.okx {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text2);
+}
+.exchange-badge.bybit {
+    background: rgba(255, 179, 0, 0.08);
+    color: #cc9200;
+}
+.exchange-badge.ai {
+    background: var(--purple-dim);
+    color: var(--purple);
 }
 .settings-note {
     font-size: 11px;
