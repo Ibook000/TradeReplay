@@ -197,18 +197,25 @@ def migrate_from_json(json_file: str):
         print(f"[DB] Migration error: {e}", flush=True)
 
 
-def get_ai_analysis(symbol: str, days: int, latest_close_ms: int) -> str | None:
-    """Get cached AI analysis. Returns analysis text or None if stale/missing."""
+def get_ai_analysis(symbol: str, week_start: str) -> dict | None:
+    """Get cached AI analysis for a specific week. Returns dict or None."""
     conn = get_connection()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
-                SELECT analysis FROM ai_analyses
-                WHERE symbol = %s AND days = %s AND latest_close_ms = %s
-                ORDER BY created_at DESC LIMIT 1
-            """, (symbol.upper(), days, latest_close_ms))
+                SELECT id, symbol, week_start, week_end, trade_count,
+                       total_pnl, win_rate, analysis, created_at
+                FROM ai_analyses
+                WHERE symbol = %s AND week_start = %s
+            """, (symbol.upper(), week_start))
             row = cur.fetchone()
-            return row[0] if row else None
+            if row:
+                d = dict(row)
+                for k in ('total_pnl', 'win_rate'):
+                    if d[k] is not None:
+                        d[k] = float(d[k])
+                return d
+            return None
     except Exception as e:
         print(f"[DB] AI cache read error: {e}", flush=True)
         return None
@@ -216,20 +223,58 @@ def get_ai_analysis(symbol: str, days: int, latest_close_ms: int) -> str | None:
         conn.close()
 
 
-def save_ai_analysis(symbol: str, days: int, trade_count: int,
-                     latest_close_ms: int, analysis: str):
-    """Save AI analysis to cache."""
+def save_ai_analysis(symbol: str, week_start: str, week_end: str,
+                     trade_count: int, total_pnl: float, win_rate: float,
+                     analysis: str):
+    """Save AI analysis to cache (upsert by symbol+week_start)."""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO ai_analyses (symbol, days, trade_count, latest_close_ms, analysis)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (symbol.upper(), days, trade_count, latest_close_ms, analysis))
+                INSERT INTO ai_analyses (symbol, week_start, week_end, trade_count,
+                                         total_pnl, win_rate, analysis)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (symbol, week_start) DO UPDATE SET
+                    trade_count = EXCLUDED.trade_count,
+                    total_pnl = EXCLUDED.total_pnl,
+                    win_rate = EXCLUDED.win_rate,
+                    analysis = EXCLUDED.analysis,
+                    created_at = CURRENT_TIMESTAMP
+            """, (symbol.upper(), week_start, week_end, trade_count,
+                  total_pnl, win_rate, analysis))
         conn.commit()
-        print(f"[DB] Saved AI analysis for {symbol}/{days}d", flush=True)
+        print(f"[DB] Saved AI analysis for {symbol} week {week_start}", flush=True)
     except Exception as e:
         conn.rollback()
         print(f"[DB] AI cache save error: {e}", flush=True)
+    finally:
+        conn.close()
+
+
+def get_ai_history(symbol: str = 'ALL', limit: int = 12) -> list[dict]:
+    """Get AI analysis history, newest first."""
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, symbol, week_start, week_end, trade_count,
+                       total_pnl, win_rate, analysis, created_at
+                FROM ai_analyses
+                WHERE symbol = %s
+                ORDER BY week_start DESC
+                LIMIT %s
+            """, (symbol.upper(), limit))
+            rows = cur.fetchall()
+            result = []
+            for row in rows:
+                d = dict(row)
+                for k in ('total_pnl', 'win_rate'):
+                    if d[k] is not None:
+                        d[k] = float(d[k])
+                result.append(d)
+            return result
+    except Exception as e:
+        print(f"[DB] AI history error: {e}", flush=True)
+        return []
     finally:
         conn.close()

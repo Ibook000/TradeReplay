@@ -41,16 +41,18 @@ CREATE TRIGGER update_trades_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- AI Analysis cache table
+-- AI Analysis cache table (weekly schedule)
 CREATE TABLE IF NOT EXISTS ai_analyses (
     id SERIAL PRIMARY KEY,
-    symbol VARCHAR(16) NOT NULL,
-    days INT NOT NULL,
+    symbol VARCHAR(16) NOT NULL DEFAULT 'ALL',
+    week_start DATE NOT NULL,
+    week_end DATE NOT NULL,
     trade_count INT NOT NULL,
-    latest_close_ms BIGINT NOT NULL,
+    total_pnl NUMERIC(20,8),
+    win_rate NUMERIC(5,2),
     analysis TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_ai_analyses_lookup
-    ON ai_analyses(symbol, days, latest_close_ms);
+CREATE INDEX IF NOT EXISTS idx_ai_week ON ai_analyses(symbol, week_start);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_unique_week ON ai_analyses(symbol, week_start);

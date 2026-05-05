@@ -80,17 +80,23 @@
         <div class="panel-header">
             <h2>AI Coach</h2>
             <div style="display:flex;align-items:center;gap:8px;">
-                <span id="aiCacheTag" style="font-size:9px;color:#5a5a6e;display:none;">cached</span>
-                <button id="aiReanalyzeBtn" style="background:#1a1a25;border:1px solid #28283a;color:#8a8a9a;padding:3px 8px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;display:none;">Re-analyze</button>
             </div>
             <button class="close-btn" id="closeAiPanel">&times;</button>
         </div>
         <div class="panel-content" id="aiContent">
+            <div id="aiWeekHeader" style="font-size:10px;color:#5a5a6e;margin-bottom:12px;display:none;">
+                <span id="aiWeekLabel"></span>
+                <span id="aiWeekStats" style="margin-left:8px;"></span>
+            </div>
             <div class="ai-loading" id="aiLoading">
                 <div class="spinner"></div>
-                <span>Analyzing trades...</span>
+                <span>Loading analysis...</span>
             </div>
             <div class="ai-result" id="aiResult" style="display: none;"></div>
+            <div id="aiHistorySection" style="margin-top:16px;display:none;">
+                <div style="font-size:9px;color:#5a5a6e;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;border-top:1px solid #1e1e28;padding-top:12px;">Past Weeks</div>
+                <div id="aiHistoryList"></div>
+            </div>
         </div>
     </div>
 

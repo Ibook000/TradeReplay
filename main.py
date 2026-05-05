@@ -15,9 +15,9 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 import httpx
 
-from cache import get_cached, get_store_count, maybe_refresh, force_refresh, load_from_disk, start_daily_scheduler
+from cache import get_cached, get_store_count, maybe_refresh, force_refresh, load_from_disk, start_daily_scheduler, start_weekly_ai_scheduler, _run_weekly_ai_analysis
 from klines import fetch_klines, pick_interval
-from database import get_ai_analysis, save_ai_analysis, get_trades as db_get_trades
+from database import get_ai_analysis, save_ai_analysis, get_ai_history, get_trades as db_get_trades
 
 # ─── App ────────────────────────────────────────────────────────────────
 app = FastAPI(title="Trade Replay")
@@ -38,6 +38,7 @@ app.add_middleware(NoCacheMiddleware)
 
 load_from_disk()
 start_daily_scheduler()
+start_weekly_ai_scheduler()
 
 
 def _mask_key(key: str) -> str:
@@ -226,137 +227,34 @@ async def test_exchange(request: Request):
         return {"status": "error", "message": str(e)}
 
 
-@app.get("/api/ai_cached")
-async def ai_cached(symbol: str = Query("BTC"), days: int = Query(30)):
-    """Check for cached AI analysis."""
-    # Get latest close_ms for this symbol/days combo
-    trades = db_get_trades(days=days, symbol=symbol)
-    if not trades:
-        return {"cached": False, "reason": "no_trades"}
-    latest_close_ms = max(t.get("close_ms", 0) for t in trades)
-    analysis = get_ai_analysis(symbol, days, latest_close_ms)
-    if analysis:
-        return {"cached": True, "analysis": analysis, "symbol": symbol, "days": days,
-                "trade_count": len(trades), "analyzed_at": "cached"}
-    return {"cached": False, "reason": "no_match", "trade_count": len(trades),
-            "latest_close_ms": latest_close_ms}
+@app.get("/api/ai_analysis")
+async def ai_analysis(week: str = Query("", description="Week start date YYYY-MM-DD, empty for latest")):
+    """Get AI analysis for a specific week, or the latest one."""
+    if week:
+        result = get_ai_analysis("ALL", week)
+        if result:
+            return {"found": True, **result}
+        return {"found": False, "week": week}
+    else:
+        history = get_ai_history("ALL", limit=1)
+        if history:
+            return {"found": True, **history[0]}
+        return {"found": False, "reason": "no_analysis_yet"}
 
 
-@app.post("/api/ai_analyze")
-async def ai_analyze(request: Request):
-    """AI analyzes trade data with caching. Returns cached result if fresh."""
-    body = await request.json()
-    trades = body.get("trades", [])
-    symbol = body.get("symbol", "BTC")
-    days = body.get("days", 30)
-    force = body.get("force", False)
+@app.get("/api/ai_history")
+async def ai_history(limit: int = Query(12, ge=1, le=52)):
+    """Get AI analysis history, newest first."""
+    history = get_ai_history("ALL", limit=limit)
+    return {"history": history, "count": len(history)}
 
-    if not trades:
-        return {"error": "No trades to analyze"}
 
-    latest_close_ms = max(t.get("close_ms", 0) for t in trades)
-
-    # Check cache first (unless force re-analyze)
-    if not force:
-        cached = get_ai_analysis(symbol, days, latest_close_ms)
-        if cached:
-            return {"analysis": cached, "symbol": symbol, "days": days, "cached": True}
-
-    # Get AI config
-    api_key = os.getenv("AI_API_KEY", "")
-    base_url = os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1")
-    model = os.getenv("AI_MODEL", "deepseek-chat")
-
-    if not api_key:
-        return {"error": "AI not configured. Please set AI_API_KEY in Settings."}
-
-    # Prepare trade summary for AI
-    total_pnl = sum(t.get("pnl", 0) for t in trades)
-    win_trades = [t for t in trades if t.get("pnl", 0) > 0]
-    lose_trades = [t for t in trades if t.get("pnl", 0) <= 0]
-    win_rate = len(win_trades) / len(trades) * 100 if trades else 0
-    avg_win = sum(t.get("pnl", 0) for t in win_trades) / len(win_trades) if win_trades else 0
-    avg_loss = sum(t.get("pnl", 0) for t in lose_trades) / len(lose_trades) if lose_trades else 0
-    biggest_win = max((t.get("pnl", 0) for t in trades), default=0)
-    biggest_loss = min((t.get("pnl", 0) for t in trades), default=0)
-    avg_hold = sum(t.get("hold_hours", 0) for t in trades) / len(trades) if trades else 0
-    long_losses = [t for t in lose_trades if t.get("direction") == "long"]
-    short_losses = [t for t in lose_trades if t.get("direction") == "short"]
-
-    trade_summary = f"""
-=== {symbol} 交易数据分析 ({days}天) ===
-
-总交易数: {len(trades)}
-总盈亏: {total_pnl:.2f} USDT
-胜率: {win_rate:.1f}%
-平均盈利: {avg_win:.2f} USDT
-平均亏损: {avg_loss:.2f} USDT
-最大单笔盈利: {biggest_win:.2f} USDT
-最大单笔亏损: {biggest_loss:.2f} USDT
-平均持仓时间: {avg_hold:.1f} 小时
-
-亏损交易分析:
-- 做多亏损: {len(long_losses)} 笔
-- 做空亏损: {len(short_losses)} 笔
-
-最近5笔交易:
-"""
-    recent_trades = trades[-5:] if len(trades) > 5 else trades
-    for i, t in enumerate(recent_trades, 1):
-        pnl = t.get("pnl", 0)
-        direction = t.get("direction", "unknown")
-        entry = t.get("open_price", 0)
-        exit_price = t.get("close_price", 0)
-        hold = t.get("hold_hours", 0)
-        leverage = t.get("leverage", 1)
-        trade_summary += f"""
-{i}. {direction.upper()} {leverage}x | Entry: {entry:.2f} → Exit: {exit_price:.2f} | Hold: {hold:.1f}h | PnL: {pnl:+.2f} USDT
-"""
-
-    prompt = f"""你是一个犀利的交易教练，专门分析合约交易数据，用直接、尖锐的语言指出问题，鞭策交易者改进。
-
-请分析以下交易数据，用中文回答，要求：
-1. 直接指出最严重的问题，不要客套
-2. 用数据说话，引用具体数字
-3. 指出重复犯的错误
-4. 给出可执行的改进建议
-5. 语气要犀利，像教练骂醒学员一样
-
-{trade_summary}
-
-请开始你的毒舌分析："""
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": "你是一个犀利的交易教练，专门分析合约交易数据，用直接、尖锐的语言指出问题，鞭策交易者改进。"},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.7,
-                    "max_tokens": 1500
-                },
-                timeout=30.0
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                analysis = result["choices"][0]["message"]["content"]
-                # Save to cache
-                save_ai_analysis(symbol, days, len(trades), latest_close_ms, analysis)
-                return {"analysis": analysis, "symbol": symbol, "days": days, "cached": False}
-            else:
-                return {"error": f"API request failed: {response.status_code} - {response.text}"}
-
-    except Exception as e:
-        return {"error": f"AI analysis failed: {str(e)}"}
+@app.post("/api/ai_trigger")
+async def ai_trigger():
+    """Manually trigger a weekly AI analysis (for testing)."""
+    import threading
+    threading.Thread(target=_run_weekly_ai_analysis, daemon=True).start()
+    return {"status": "triggered", "message": "Weekly AI analysis started in background"}
 
 
 if __name__ == "__main__":

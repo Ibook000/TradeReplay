@@ -20,7 +20,6 @@ const App = {
         document.getElementById('statsBtn').addEventListener('click', () => this.togglePanel('statsPanel'));
         document.getElementById('closeStatsBtn').addEventListener('click', () => this.closePanel('statsPanel'));
         document.getElementById('aiAnalyzeBtn').addEventListener('click', () => this.runAiAnalysis());
-        document.getElementById('aiReanalyzeBtn').addEventListener('click', () => this.runAiAnalysis(true));
         document.getElementById('closeAiPanel').addEventListener('click', () => this.closePanel('aiPanel'));
         document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
         document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closePanel('settingsPanel'));
@@ -201,73 +200,84 @@ const App = {
         document.getElementById('aiModel').value = model;
     },
 
-    async runAiAnalysis(force = false) {
+    async runAiAnalysis() {
         const btn = document.getElementById('aiAnalyzeBtn');
         const panel = document.getElementById('aiPanel');
         const loading = document.getElementById('aiLoading');
         const result = document.getElementById('aiResult');
-        const cacheTag = document.getElementById('aiCacheTag');
-        const reanalyzeBtn = document.getElementById('aiReanalyzeBtn');
-
-        if (!Trades.allTrades?.length) return alert('No trades');
-
+        const weekHeader = document.getElementById('aiWeekHeader');
+        const weekLabel = document.getElementById('aiWeekLabel');
+        const weekStats = document.getElementById('aiWeekStats');
+        const historySection = document.getElementById('aiHistorySection');
+        const historyList = document.getElementById('aiHistoryList');
         panel.classList.add('open');
-
-        // If not forcing, try cached first via GET
-        if (!force) {
-            loading.style.display = 'flex';
-            result.style.display = 'none';
-            try {
-                const days = parseInt(document.getElementById('daysSelect').value);
-                const cacheResp = await fetch(`/api/ai_cached?symbol=${this.currentSymbol}&days=${days}`);
-                const cacheData = await cacheResp.json();
-                if (cacheData.cached) {
-                    result.innerHTML = this.formatAi(cacheData.analysis);
-                    loading.style.display = 'none';
-                    result.style.display = 'block';
-                    cacheTag.style.display = 'inline';
-                    reanalyzeBtn.style.display = 'inline-block';
-                    return;
-                }
-            } catch (e) { /* fall through to analyze */ }
-        }
-
-        // No cache or force re-analyze
         loading.style.display = 'flex';
         result.style.display = 'none';
-        cacheTag.style.display = 'none';
-        reanalyzeBtn.style.display = 'none';
-        btn.disabled = true;
-
+        weekHeader.style.display = 'none';
+        historySection.style.display = 'none';
         try {
-            const resp = await fetch('/api/ai_analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    trades: Trades.allTrades,
-                    symbol: this.currentSymbol,
-                    days: parseInt(document.getElementById('daysSelect').value),
-                    force: force
-                })
-            });
-            const data = await resp.json();
+            // Load latest analysis + history in parallel
+            const [analysisResp, historyResp] = await Promise.all([
+                fetch('/api/ai_analysis'),
+                fetch('/api/ai_history?limit=12')
+            ]);
+            const analysisData = await analysisResp.json();
+            const historyData = await historyResp.json();
 
-            result.innerHTML = data.error 
-                ? `<div class="highlight">${data.error}</div>`
-                : this.formatAi(data.analysis);
-
+            if (analysisData.found) {
+                weekLabel.textContent = `${analysisData.week_start} ~ ${analysisData.week_end}`;
+                weekStats.textContent = `| ${analysisData.trade_count} trades | ${analysisData.total_pnl >= 0 ? '+' : ''}${analysisData.total_pnl?.toFixed(2)} USDT | ${analysisData.win_rate?.toFixed(1)}% WR`;
+                weekHeader.style.display = 'block';
+                result.innerHTML = this.formatAi(analysisData.analysis);
+            } else {
+                result.innerHTML = `<div style="color:#5a5a6e;text-align:center;padding:20px;">No analysis yet. Runs every Monday at 00:00.</div>`;
+            }
             loading.style.display = 'none';
             result.style.display = 'block';
-            if (!data.error) {
-                cacheTag.style.display = data.cached ? 'inline' : 'none';
-                reanalyzeBtn.style.display = 'inline-block';
+
+            // Render history
+            if (historyData.history?.length > 1) {
+                historyList.innerHTML = historyData.history.slice(1).map(h =>
+                    `<div class="trade-card" style="cursor:pointer;padding:6px 10px;margin-bottom:4px;" onclick="App.loadWeekAnalysis('${h.week_start}')">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-size:10px;color:#8a8a9a;">${h.week_start} ~ ${h.week_end}</span>
+                            <span style="font-size:10px;font-family:monospace;color:${h.total_pnl >= 0 ? '#00c853' : '#ff3d3d'};">${h.total_pnl >= 0 ? '+' : ''}${h.total_pnl?.toFixed(2)}</span>
+                        </div>
+                    </div>`
+                ).join('');
+                historySection.style.display = 'block';
             }
         } catch (e) {
-            result.innerHTML = `<div class="highlight">${e.message}</div>`;
+            result.innerHTML = `<div class="highlight">Failed to load: ${e.message}</div>`;
             loading.style.display = 'none';
             result.style.display = 'block';
-        } finally {
-            btn.disabled = false;
+        }
+    },
+
+    async loadWeekAnalysis(weekStart) {
+        const result = document.getElementById('aiResult');
+        const weekHeader = document.getElementById('aiWeekHeader');
+        const weekLabel = document.getElementById('aiWeekLabel');
+        const weekStats = document.getElementById('aiWeekStats');
+        const loading = document.getElementById('aiLoading');
+
+        loading.style.display = 'flex';
+        result.style.display = 'none';
+        try {
+            const resp = await fetch(`/api/ai_analysis?week=${weekStart}`);
+            const data = await resp.json();
+            if (data.found) {
+                weekLabel.textContent = `${data.week_start} ~ ${data.week_end}`;
+                weekStats.textContent = `| ${data.trade_count} trades | ${data.total_pnl >= 0 ? '+' : ''}${data.total_pnl?.toFixed(2)} USDT | ${data.win_rate?.toFixed(1)}% WR`;
+                weekHeader.style.display = 'block';
+                result.innerHTML = this.formatAi(data.analysis);
+            }
+            loading.style.display = 'none';
+            result.style.display = 'block';
+        } catch (e) {
+            loading.style.display = 'none';
+            result.style.display = 'block';
+            result.innerHTML = `<div class="highlight">Failed to load: ${e.message}</div>`;
         }
     },
 
