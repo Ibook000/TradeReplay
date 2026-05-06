@@ -1,3 +1,16 @@
+function escapeHtml(value) {
+    const htmlEscapes = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+        '/': '&#x2F;',
+    };
+
+    return String(value ?? '').replace(/[&<>"'\/]/g, ch => htmlEscapes[ch]);
+}
+
 const App = {
     currentSymbol: '',
     currentExchange: '',
@@ -251,18 +264,24 @@ const App = {
 
             // Render history
             if (historyData.history?.length > 1) {
-                historyList.innerHTML = historyData.history.slice(1).map(h =>
-                    `<div class="trade-card" style="cursor:pointer;padding:6px 10px;margin-bottom:4px;" onclick="App.loadWeekAnalysis('${h.week_start}')">
+                historyList.innerHTML = historyData.history.slice(1).map(h => {
+                    const weekStart = escapeHtml(h.week_start);
+                    const weekEnd = escapeHtml(h.week_end);
+                    const totalPnl = Number(h.total_pnl) || 0;
+                    return `<div class="trade-card ai-history-item" data-week-start="${weekStart}" style="cursor:pointer;padding:6px 10px;margin-bottom:4px;">
                         <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-size:10px;color:#8a8a9a;">${h.week_start} ~ ${h.week_end}</span>
-                            <span style="font-size:10px;font-family:monospace;color:${h.total_pnl >= 0 ? '#00c853' : '#ff3d3d'};">${h.total_pnl >= 0 ? '+' : ''}${h.total_pnl?.toFixed(2)}</span>
+                            <span style="font-size:10px;color:#8a8a9a;">${weekStart} ~ ${weekEnd}</span>
+                            <span style="font-size:10px;font-family:monospace;color:${totalPnl >= 0 ? '#00c853' : '#ff3d3d'};">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}</span>
                         </div>
-                    </div>`
-                ).join('');
+                    </div>`;
+                }).join('');
+                historyList.querySelectorAll('.ai-history-item').forEach(item => {
+                    item.addEventListener('click', () => this.loadWeekAnalysis(item.dataset.weekStart));
+                });
                 historySection.style.display = 'block';
             }
         } catch (e) {
-            result.innerHTML = `<div class="highlight">Failed to load: ${e.message}</div>`;
+            result.innerHTML = `<div class="highlight">Failed to load: ${escapeHtml(e.message)}</div>`;
             loading.style.display = 'none';
             result.style.display = 'block';
         }
@@ -278,7 +297,7 @@ const App = {
         loading.style.display = 'flex';
         result.style.display = 'none';
         try {
-            const resp = await fetch(`/api/ai_analysis?week=${weekStart}`);
+            const resp = await fetch(`/api/ai_analysis?week=${encodeURIComponent(weekStart)}`);
             const data = await resp.json();
             if (data.found) {
                 weekLabel.textContent = `${data.week_start} ~ ${data.week_end}`;
@@ -291,7 +310,7 @@ const App = {
         } catch (e) {
             loading.style.display = 'none';
             result.style.display = 'block';
-            result.innerHTML = `<div class="highlight">Failed to load: ${e.message}</div>`;
+            result.innerHTML = `<div class="highlight">Failed to load: ${escapeHtml(e.message)}</div>`;
         }
     },
 
@@ -302,7 +321,7 @@ const App = {
             return this.renderAiJson(d);
         } catch (e) { /* not JSON, fall through to plain text */ }
         // Plain text fallback
-        return text
+        return escapeHtml(text)
             .replace(/^###? (.*$)/gm, '<h3>$1</h3>')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/^\- (.*$)/gm, '<li>$1</li>')
@@ -320,12 +339,14 @@ const App = {
 
         // Summary + Score
         if (d.summary) {
-            const score = d.score ?? '--';
-            const scoreColor = score >= 60 ? '#00c853' : score >= 40 ? '#fbbf24' : '#ff3d3d';
+            const rawScore = Number(d.score);
+            const score = Number.isFinite(rawScore) ? rawScore : '--';
+            const scoreColor = rawScore >= 60 ? '#00c853' : rawScore >= 40 ? '#fbbf24' : '#ff3d3d';
+            const summary = escapeHtml(d.summary);
             html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
                 <div style="font-size:28px;font-weight:700;font-family:monospace;color:${scoreColor};">${score}</div>
                 <div style="flex:1;">
-                    <div style="font-size:13px;font-weight:600;color:#e1e1e6;">${d.summary}</div>
+                    <div style="font-size:13px;font-weight:600;color:#e1e1e6;">${summary}</div>
                     <div style="font-size:9px;color:#5a5a6e;margin-top:2px;">WEEKLY SCORE</div>
                 </div>
             </div>`;
@@ -335,13 +356,17 @@ const App = {
         if (d.top_issues?.length) {
             html += `<h3 style="font-size:10px;color:#ff3d3d;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px;">Top Issues</h3>`;
             for (const issue of d.top_issues) {
+                const severity = escapeHtml(issue.severity);
                 const c = sevColor[issue.severity] || '#5a5a6e';
+                const label = escapeHtml(sevLabel[issue.severity] || issue.severity);
+                const title = escapeHtml(issue.title);
+                const detail = escapeHtml(issue.detail);
                 html += `<div style="background:rgba(255,61,61,0.06);border-left:3px solid ${c};padding:8px 10px;margin-bottom:6px;border-radius:0 4px 4px 0;">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-size:11px;font-weight:600;color:#e1e1e6;">${issue.title}</span>
-                        <span style="font-size:8px;font-weight:700;color:${c};background:${c}22;padding:1px 5px;border-radius:2px;">${sevLabel[issue.severity] || issue.severity}</span>
+                        <span style="font-size:11px;font-weight:600;color:#e1e1e6;">${title}</span>
+                        <span title="${severity}" style="font-size:8px;font-weight:700;color:${c};background:${c}22;padding:1px 5px;border-radius:2px;">${label}</span>
                     </div>
-                    <div style="font-size:10px;color:#8a8a9a;margin-top:4px;line-height:1.5;">${issue.detail}</div>
+                    <div style="font-size:10px;color:#8a8a9a;margin-top:4px;line-height:1.5;">${detail}</div>
                 </div>`;
             }
         }
@@ -350,9 +375,11 @@ const App = {
         if (d.repeated_mistakes?.length) {
             html += `<h3 style="font-size:10px;color:#fbbf24;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px;">Repeated Mistakes</h3>`;
             for (const m of d.repeated_mistakes) {
+                const pattern = escapeHtml(m.pattern);
+                const evidence = escapeHtml(m.evidence);
                 html += `<div style="background:rgba(251,191,36,0.06);border-left:3px solid #fbbf24;padding:8px 10px;margin-bottom:6px;border-radius:0 4px 4px 0;">
-                    <div style="font-size:11px;font-weight:600;color:#e1e1e6;">${m.pattern}</div>
-                    <div style="font-size:10px;color:#8a8a9a;margin-top:4px;line-height:1.5;">${m.evidence}</div>
+                    <div style="font-size:11px;font-weight:600;color:#e1e1e6;">${pattern}</div>
+                    <div style="font-size:10px;color:#8a8a9a;margin-top:4px;line-height:1.5;">${evidence}</div>
                 </div>`;
             }
         }
@@ -362,15 +389,16 @@ const App = {
             html += `<h3 style="font-size:10px;color:#00c853;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px;">Action Items</h3>`;
             const sorted = [...d.action_items].sort((a, b) => (a.priority || 99) - (b.priority || 99));
             for (const item of sorted) {
-                const p = item.priority || '-';
+                const p = escapeHtml(item.priority || '-');
+                const action = escapeHtml(item.action);
                 html += `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;">
                     <span style="font-size:9px;font-weight:700;color:#0f172a;background:#00c853;padding:1px 5px;border-radius:2px;min-width:16px;text-align:center;">P${p}</span>
-                    <span style="font-size:11px;color:#e1e1e6;line-height:1.5;">${item.action}</span>
+                    <span style="font-size:11px;color:#e1e1e6;line-height:1.5;">${action}</span>
                 </div>`;
             }
         }
 
-        return html || text;
+        return html || escapeHtml(JSON.stringify(d));
     },
 
     async loadSymbols() {
@@ -389,9 +417,10 @@ const App = {
             this.currentSymbol = this.allSymbols[0].symbol;
             document.getElementById('totalBadge').textContent = `${this.allSymbols.reduce((s, x) => s + x.count, 0)} trades`;
 
-            sel.innerHTML = this.allSymbols.map(s =>
-                `<option value="${s.symbol}" ${s.symbol === this.currentSymbol ? 'selected' : ''}>${s.symbol} (${s.count})</option>`
-            ).join('');
+            sel.innerHTML = this.allSymbols.map(s => {
+                const symbol = escapeHtml(s.symbol);
+                return `<option value="${symbol}" ${s.symbol === this.currentSymbol ? 'selected' : ''}>${symbol} (${Number(s.count) || 0})</option>`;
+            }).join('');
 
             sel.onchange = () => this.switchSymbol(sel.value);
             await this.loadTrades();
@@ -423,12 +452,12 @@ const App = {
             if (Trades.allTrades.length > 0) {
                 await this.loadOverview(days);
             } else {
-                tradeList.innerHTML = `<div class="empty">No ${this.currentSymbol} trades</div>`;
+                tradeList.innerHTML = `<div class="empty">No ${escapeHtml(this.currentSymbol)} trades</div>`;
                 KlineChart.setData([]);
                 this.updateHeader(null);
             }
         } catch (e) {
-            tradeList.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+            tradeList.innerHTML = `<div class="empty">Error: ${escapeHtml(e.message)}</div>`;
         }
     },
 
@@ -473,14 +502,17 @@ const App = {
     updateHeader(trade) {
         const el = document.getElementById('chartHeader');
         if (!trade) {
-            el.innerHTML = `<span class="info"><strong>${this.currentSymbol}</strong> Overview</span><span class="info">${Trades.allTrades.length} trades</span>`;
+            el.innerHTML = `<span class="info"><strong>${escapeHtml(this.currentSymbol)}</strong> Overview</span><span class="info">${Trades.allTrades.length} trades</span>`;
             return;
         }
         const cls = trade.pnl >= 0 ? 'positive' : 'negative';
+        const symbol = escapeHtml(trade.symbol || this.currentSymbol);
+        const direction = trade.direction === 'long' ? 'LONG' : 'SHORT';
+        const leverage = escapeHtml(trade.leverage);
         el.innerHTML = `
             <span class="info">
                 <button class="back-btn" onclick="App.backToOverview()">&larr; Overview</button>
-                <strong>${trade.symbol || this.currentSymbol} ${trade.direction === 'long' ? 'LONG' : 'SHORT'} ${trade.leverage}x</strong> |
+                <strong>${symbol} ${direction} ${leverage}x</strong> |
                 Entry <strong>${fmtPrice(trade.open_price)}</strong> |
                 Exit <strong>${fmtPrice(trade.close_price)}</strong> |
                 Hold <strong>${trade.hold_hours.toFixed(1)}h</strong>

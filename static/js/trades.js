@@ -147,6 +147,7 @@ const Trades = {
         });
         
         // ─── Render HTML ───────────────────────────────────────────────
+        const escape = typeof escapeHtml === 'function' ? escapeHtml : (value) => String(value ?? '');
         const html = `
             <!-- Charts Section -->
             <div class="stats-section">
@@ -283,11 +284,11 @@ const Trades = {
                 <div class="stats-grid">
                     ${Object.entries(exchangeStats).map(([ex, s]) => `
                         <div class="stats-item">
-                            <div class="label">${ex} Trades</div>
+                            <div class="label">${escape(ex)} Trades</div>
                             <div class="value neutral">${s.count}</div>
                         </div>
                         <div class="stats-item">
-                            <div class="label">${ex} PnL</div>
+                            <div class="label">${escape(ex)} PnL</div>
                             <div class="value ${s.pnl >= 0 ? 'positive' : 'negative'}">${s.pnl >= 0 ? '+' : ''}${s.pnl.toFixed(2)}</div>
                         </div>
                     `).join('')}
@@ -304,8 +305,8 @@ const Trades = {
                     </div>
                 </div>
                 <table class="stats-table" style="margin-top: 10px;">
-                    <tr><td>Best Trade</td><td class="positive">+${bestTrade.pnl.toFixed(2)} (${bestTrade.exchange} ${bestTrade.direction})</td></tr>
-                    <tr><td>Worst Trade</td><td class="negative">${worstTrade.pnl.toFixed(2)} (${worstTrade.exchange} ${worstTrade.direction})</td></tr>
+                    <tr><td>Best Trade</td><td class="positive">+${bestTrade.pnl.toFixed(2)} (${escape(bestTrade.exchange)} ${escape(bestTrade.direction)})</td></tr>
+                    <tr><td>Worst Trade</td><td class="negative">${worstTrade.pnl.toFixed(2)} (${escape(worstTrade.exchange)} ${escape(worstTrade.direction)})</td></tr>
                 </table>
             </div>
         `;
@@ -480,21 +481,24 @@ const Trades = {
             return;
         }
 
+        const escape = typeof escapeHtml === 'function' ? escapeHtml : (value) => String(value ?? '');
         list.innerHTML = trades.map((t, i) => {
             const isLong = t.direction === 'long';
             const pnlClass = t.pnl >= 0 ? 'positive' : 'negative';
             const exClass = t.exchange === 'OKX' ? 'okx' : 'bybit';
+            const exchange = escape(t.exchange);
+            const leverage = escape(t.leverage);
 
             return `<div class="trade-card" data-idx="${i}" onclick="App.selectTrade(${i})">
                 <div class="top">
-                    <span class="exchange ${exClass}">${t.exchange}</span>
+                    <span class="exchange ${exClass}">${exchange}</span>
                     <span class="dir ${isLong ? 'long' : 'short'}">${isLong ? 'LONG' : 'SHORT'}</span>
                     <span class="pnl ${pnlClass}">${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)} USDT</span>
                 </div>
                 <div class="details">
                     <span>Entry <span class="val">${fmtPrice(t.open_price)}</span></span>
                     <span>Exit <span class="val">${fmtPrice(t.close_price)}</span></span>
-                    <span>Lev <span class="val">${t.leverage}x</span></span>
+                    <span>Lev <span class="val">${leverage}x</span></span>
                     <span>Hold <span class="val">${t.hold_hours.toFixed(1)}h</span></span>
                     <span>Open <span class="val">${formatTime(t.open_ms)}</span></span>
                     <span>Close <span class="val">${formatTime(t.close_ms)}</span></span>
