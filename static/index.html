@@ -8,15 +8,10 @@
     <title>Trade Replay</title>
     <script src="/static/js/lightweight-charts.standalone.production.js"></script>
     <script src="/static/js/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=14">
+    <link rel="stylesheet" href="/static/css/style.css?v=16">
 </head>
 <body>
     <div class="app">
-        <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                <path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
-            </svg>
-        </button>
         <div class="sidebar" id="sidebar">
             <div class="header">
                 <div class="header-top">
@@ -61,6 +56,12 @@
                 <div class="loading"><div class="spinner"></div>Loading...</div>
             </div>
         </div>
+
+        <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </svg>
+        </button>
 
         <div class="main">
             <div class="chart-header" id="chartHeader">
@@ -277,10 +278,10 @@
         </div>
     </div>
 
-    <script src="/static/js/utils.js?v=14"></script>
-    <script src="/static/js/api.js?v=14"></script>
-    <script src="/static/js/chart.js?v=14"></script>
-    <script src="/static/js/trades.js?v=14"></script>
-    <script src="/static/js/app.js?v=14"></script>
+    <script src="/static/js/utils.js?v=16"></script>
+    <script src="/static/js/api.js?v=16"></script>
+    <script src="/static/js/chart.js?v=16"></script>
+    <script src="/static/js/trades.js?v=16"></script>
+    <script src="/static/js/app.js?v=16"></script>
 </body>
 </html>
