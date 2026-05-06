@@ -162,7 +162,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=tradereplay
 DB_USER=tradereplay
-DB_PASS=your_password
+DB_PASSWORD=your_password
 ```
 
 ## API Keys Setup
