@@ -142,35 +142,50 @@ async def fetch_bybit(symbol: str, interval: str, start_ms: int, end_ms: int) ->
 
 # ─── Bitget ─────────────────────────────────────────────────────────────
 async def fetch_bitget(symbol: str, interval: str, start_ms: int, end_ms: int) -> list[dict]:
-    """Fetch from Bitget public API. symbol = 'BTCUSDT'."""
+    """Fetch from Bitget public API. symbol = 'BTCUSDT'.
+
+    Bitget candles API returns data in ASCENDING order (oldest first).
+    Uses both 'candles' (recent) and 'history-candles' (older) endpoints.
+    Paginates backward by decreasing endTime.
+    """
     granularity = _BITGET_GRANULARITY.get(interval, "1H")
-    url = "https://api.bitget.com/api/v2/mix/market/candles"
     all_klines = []
-    cur = end_ms
+    cur_end = end_ms
+
     async with httpx.AsyncClient() as client:
-        for _ in range(50):
+        for _ in range(200):
             params = {"symbol": symbol, "productType": "USDT-FUTURES",
                       "granularity": granularity, "startTime": str(start_ms),
-                      "endTime": str(cur), "limit": "200"}
-            try:
-                resp = await client.get(url, params=params, timeout=10)
-                data = resp.json()
-            except Exception:
-                break
-            if data.get("code") != "00000":
-                break
-            rows = data.get("data", [])
+                      "endTime": str(cur_end), "limit": "200"}
+            rows = []
+            # Try candles first, then history-candles
+            for endpoint in ["candles", "history-candles"]:
+                url = f"https://api.bitget.com/api/v2/mix/market/{endpoint}"
+                try:
+                    resp = await client.get(url, params=params, timeout=10)
+                    data = resp.json()
+                except Exception:
+                    continue
+                if data.get("code") == "00000":
+                    rows = data.get("data", [])
+                    if rows:
+                        break
+
             if not rows:
                 break
+
+            # Data is ascending: rows[0]=oldest, rows[-1]=newest
             for r in rows:
                 ts = int(r[0])
                 if start_ms <= ts <= end_ms:
                     all_klines.append(_to_kline(r[0], r[1], r[2], r[3], r[4], r[5]))
-            # Bitget returns newest first, paginate backward
-            oldest_ts = int(rows[-1][0])
+
+            # Oldest candle in this batch
+            oldest_ts = int(rows[0][0])
             if oldest_ts <= start_ms:
                 break
-            cur = oldest_ts - 1
+            # Move endTime to just before the oldest candle we got
+            cur_end = oldest_ts - 1
 
     # Deduplicate by timestamp
     seen = set()
