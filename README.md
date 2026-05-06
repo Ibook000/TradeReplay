@@ -56,7 +56,7 @@ sudo systemctl enable postgresql
 ```bash
 git clone https://github.com/Ibook000/TradeReplay.git
 cd TradeReplay
-pip3 install -r requirements.txt psycopg2-binary
+pip3 install -r requirements.txt
 ```
 
 ### 3. Setup Database
