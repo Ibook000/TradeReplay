@@ -198,18 +198,11 @@ const App = {
         
         try {
             await this.saveAiConfig();
-            const resp = await fetch('/api/ai_analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    trades: [{ pnl: 1, direction: 'long', open_price: 100, close_price: 101, hold_hours: 1, leverage: 10 }],
-                    symbol: 'TEST', days: 1
-                })
-            });
+            const resp = await fetch('/api/test_ai', { method: 'POST' });
             const data = await resp.json();
             
-            status.textContent = data.error ? data.error : 'Connected';
-            status.className = `form-status ${data.error ? 'error' : 'success'}`;
+            status.textContent = data.message;
+            status.className = `form-status ${data.status === 'ok' ? 'success' : 'error'}`;
         } catch (e) {
             status.textContent = e.message;
             status.className = 'form-status error';

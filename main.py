@@ -249,6 +249,50 @@ async def ai_history(limit: int = Query(12, ge=1, le=52)):
     return {"history": history, "count": len(history)}
 
 
+@app.post("/api/test_ai")
+async def test_ai():
+    """Test AI connection with the current OpenAI-compatible configuration."""
+    api_key = os.getenv("AI_API_KEY", "").strip()
+    base_url = os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1").strip().rstrip("/")
+    model = os.getenv("AI_MODEL", "deepseek-chat").strip()
+
+    if not api_key:
+        return {"status": "error", "message": "AI API key is not configured"}
+    if not base_url:
+        return {"status": "error", "message": "AI Base URL is not configured"}
+    if not model:
+        return {"status": "error", "message": "AI model is not configured"}
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                f"{base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "user", "content": "Reply with OK."},
+                    ],
+                    "temperature": 0,
+                    "max_tokens": 8,
+                },
+            )
+
+        if resp.status_code == 200:
+            return {"status": "ok", "message": f"Connected to {model}"}
+
+        error_detail = resp.text[:200].strip() or resp.reason_phrase
+        return {
+            "status": "error",
+            "message": f"AI test failed ({resp.status_code}): {error_detail}",
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"AI test failed: {e}"}
+
+
 @app.post("/api/ai_trigger")
 async def ai_trigger():
     """Manually trigger a weekly AI analysis (for testing)."""
