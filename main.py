@@ -206,27 +206,6 @@ async def update_config(request: Request):
     return {"status": "ok", "message": "Configuration updated"}
 
 
-@app.post("/api/test_exchange")
-async def test_exchange(request: Request):
-    """Test exchange connection."""
-    body = await request.json()
-    exchange = body.get("exchange", "").lower()
-    
-    try:
-        if exchange == "okx":
-            from exchanges.okx import test_connection
-            result = await test_connection()
-            return result
-        elif exchange == "bybit":
-            from exchanges.bybit import test_connection
-            result = await test_connection()
-            return result
-        else:
-            return {"status": "error", "message": "Unknown exchange"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-
 @app.get("/api/ai_analysis")
 async def ai_analysis(week: str = Query("", description="Week start date YYYY-MM-DD, empty for latest")):
     """Get AI analysis for a specific week, or the latest one."""

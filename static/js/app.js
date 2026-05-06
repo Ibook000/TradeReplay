@@ -184,27 +184,6 @@ const App = {
         }
     },
 
-    async testExchange(exchange) {
-        const status = document.getElementById(`${exchange}Status`);
-        status.textContent = 'Testing...';
-        status.className = 'form-status';
-        
-        try {
-            const resp = await fetch('/api/test_exchange', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ exchange })
-            });
-            const data = await resp.json();
-            
-            status.textContent = data.status === 'ok' ? data.message : data.message;
-            status.className = `form-status ${data.status === 'ok' ? 'success' : 'error'}`;
-        } catch (e) {
-            status.textContent = e.message;
-            status.className = 'form-status error';
-        }
-    },
-
     async testAi() {
         const status = document.getElementById('aiStatus');
         status.textContent = 'Testing...';
