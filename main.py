@@ -128,7 +128,7 @@ async def get_config():
         "okx": {
             "api_key": _mask_key(keys.OKX_API_KEY),
             "secret_key": _mask_key(keys.OKX_SECRET_KEY),
-            "passphrase": keys.OKX_PASSPHRASE,
+            "passphrase": _mask_key(keys.OKX_PASSPHRASE),
             "configured": bool(keys.OKX_API_KEY)
         },
         "bybit": {

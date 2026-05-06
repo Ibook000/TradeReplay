@@ -93,6 +93,7 @@ const App = {
             // OKX
             document.getElementById('okxKeyMasked').textContent = data.okx.api_key || '--';
             document.getElementById('okxSecretMasked').textContent = data.okx.secret_key || '--';
+            document.getElementById('okxPassphraseMasked').textContent = data.okx.passphrase || '--';
             
             // Bybit
             document.getElementById('bybitKeyMasked').textContent = data.bybit.api_key || '--';
