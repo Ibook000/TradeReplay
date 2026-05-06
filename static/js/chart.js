@@ -30,7 +30,10 @@ const KlineChart = {
                 secondsVisible: false,
             },
             localization: {
-                timeFormatter: (time) => formatTime(time * 1000),
+                timeFormatter: (time) => new Date(time * 1000).toLocaleString('zh-CN', {
+                    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+                    timeZone: 'UTC',
+                }),
             },
         });
 

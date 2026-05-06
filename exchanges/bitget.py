@@ -63,13 +63,18 @@ async def test_connection() -> dict:
 
 # ─── Fetch ────────────────────────────────────────────────────────────────
 async def fetch_bitget_trades(days: int = 30) -> list[dict]:
-    """Fetch all filled close orders from Bitget V2 API (multi-symbol).
+    """Fetch all closed positions from Bitget V2 position history API.
+
+    Uses /api/v2/mix/position/history-position which provides
+    real openTime and closeTime for each position.
 
     Returns list of unified trade dicts with 'symbol' field.
     """
     now_ms = int(time.time() * 1000)
-    start_ms = now_ms - days * 86400 * 1000
-    path = "/api/v2/mix/order/orders-history"
+    # Bitget position history API only supports max 90 days
+    actual_days = min(days, 89)
+    start_ms = now_ms - actual_days * 86400 * 1000
+    path = "/api/v2/mix/position/history-position"
     all_records = []
     # Bitget API limits startTime-endTime interval to 90 days
     chunk_ms = 89 * 86400 * 1000
@@ -98,7 +103,7 @@ async def fetch_bitget_trades(days: int = 30) -> list[dict]:
                 break
 
             result = data.get("data", {})
-            records = result.get("entrustedList", [])
+            records = result.get("list", [])
             end_id = result.get("endId", "")
 
             if not records:
@@ -110,30 +115,23 @@ async def fetch_bitget_trades(days: int = 30) -> list[dict]:
 
         chunk_start = chunk_end + 1
 
-    # Filter: filled close orders only
-    close_orders = [
-        r for r in all_records
-        if r.get("tradeSide") == "close" and r.get("status") == "filled"
-    ]
-
     # Convert to unified format
     trades = []
-    for p in close_orders:
-        close_ms = int(p.get("cTime", "0") or "0")
-        entry_price = float(p.get("posAvg", "0") or "0")
-        exit_price = float(p.get("priceAvg", "0") or "0")
-        size = float(p.get("size", "0") or "0")
+    for p in all_records:
+        open_ms = int(p.get("ctime", "0") or "0")
+        close_ms = int(p.get("utime", "0") or "0")
+        entry_price = float(p.get("openAvgPrice", "0") or "0")
+        exit_price = float(p.get("closeAvgPrice", "0") or "0")
+        size = float(p.get("openTotalPos", "0") or "0")
         leverage = p.get("leverage", "1")
-        pnl = float(p.get("totalProfits", "0") or "0")
-        fee = abs(float(p.get("fee", "0") or "0"))
-        direction = p.get("posSide", "")  # "long" or "short"
+        pnl = float(p.get("netProfit", "0") or "0")
+        fee = abs(float(p.get("openFee", "0") or "0")) + abs(float(p.get("closeFee", "0") or "0"))
+        direction = p.get("holdSide", "")  # "long" or "short"
 
-        # Bitget doesn't provide open_ms from close orders
-        # Use 0 as placeholder (K-line will use price-based entry finding)
-        open_ms = 0
+        hold_hours = (close_ms - open_ms) / 3600000 if open_ms and close_ms else 0
 
         trades.append({
-            "id": f"bitget_{p.get('orderId', '')}",
+            "id": f"bitget_{p.get('positionId', '')}",
             "exchange": "Bitget",
             "symbol": _extract_symbol(p.get("symbol", "")),
             "direction": direction,
@@ -145,7 +143,7 @@ async def fetch_bitget_trades(days: int = 30) -> list[dict]:
             "leverage": str(leverage),
             "pnl": round(pnl, 2),
             "fee": round(fee, 2),
-            "hold_hours": 0,  # Cannot determine from close orders alone
+            "hold_hours": round(hold_hours, 1),
         })
 
     return trades

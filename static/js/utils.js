@@ -10,7 +10,7 @@ function fmtPrice(p) {
 }
 
 /**
- * Format timestamp to Beijing time string
+ * Format timestamp to UTC time string
  */
 function formatTime(ms) {
     return new Date(ms).toLocaleString('zh-CN', {
@@ -18,7 +18,7 @@ function formatTime(ms) {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'Asia/Shanghai',
+        timeZone: 'UTC',
     });
 }
 

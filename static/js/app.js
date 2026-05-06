@@ -470,7 +470,7 @@ const App = {
         Trades.highlightCard(idx);
         KlineChart.clearPriceLines();
 
-        const noOpenTime = t.exchange === 'Bybit' || t.exchange === 'Bitget';
+        const noOpenTime = t.exchange === 'Bybit';
         const padding = noOpenTime ? 30 * 86400 * 1000 : 12 * 3600 * 1000;
         const startMs = (noOpenTime ? t.close_ms : t.open_ms) - padding;
         const endMs = t.close_ms + (noOpenTime ? 12 * 3600 * 1000 : padding);
