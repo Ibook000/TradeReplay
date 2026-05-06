@@ -485,7 +485,7 @@ const Trades = {
         list.innerHTML = trades.map((t, i) => {
             const isLong = t.direction === 'long';
             const pnlClass = t.pnl >= 0 ? 'positive' : 'negative';
-            const exClass = t.exchange === 'OKX' ? 'okx' : 'bybit';
+            const exClass = t.exchange === 'OKX' ? 'okx' : t.exchange === 'Bybit' ? 'bybit' : 'bitget';
             const exchange = escape(t.exchange);
             const leverage = escape(t.leverage);
 

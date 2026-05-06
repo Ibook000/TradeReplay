@@ -21,6 +21,7 @@
     --purple-dim: rgba(124, 77, 255, 0.08);
     --okx: #9a9aa0;
     --bybit: #f7a600;
+    --bitget: #00d4aa;
     --radius: 6px;
     --transition: 0.15s ease;
 }
@@ -540,6 +541,7 @@ select:focus { outline: none; border-color: var(--blue); }
 
 .tag-okx { background: rgba(154, 154, 160, 0.1); color: var(--okx); }
 .tag-bybit { background: rgba(247, 166, 0, 0.1); color: var(--bybit); }
+.tag-bitget { background: rgba(0, 212, 170, 0.1); color: var(--bitget); }
 .tag-ai { background: var(--purple-dim); color: var(--purple); }
 
 /* ─── Settings Sections (Collapsible) ─────────────────────────────────── */

@@ -88,6 +88,7 @@ const App = {
             // Status dots
             document.getElementById('okxStatusDot').classList.toggle('active', data.okx.configured);
             document.getElementById('bybitStatusDot').classList.toggle('active', data.bybit.configured);
+            document.getElementById('bitgetStatusDot').classList.toggle('active', data.bitget?.configured || false);
             document.getElementById('aiStatusDot').classList.toggle('active', data.ai.configured);
             
             // OKX
@@ -98,6 +99,12 @@ const App = {
             // Bybit
             document.getElementById('bybitKeyMasked').textContent = data.bybit.api_key || '--';
             document.getElementById('bybitSecretMasked').textContent = data.bybit.secret_key || '--';
+            
+            // Bitget
+            if (data.bitget) {
+                document.getElementById('bitgetKeyMasked').textContent = data.bitget.api_key || '--';
+                document.getElementById('bitgetSecretMasked').textContent = data.bitget.secret_key || '--';
+            }
             
             // AI
             document.getElementById('aiBaseUrl').value = data.ai.base_url || '';
@@ -116,9 +123,13 @@ const App = {
             body.okx_api_key = document.getElementById('okxApiKey').value.trim();
             body.okx_secret_key = document.getElementById('okxSecretKey').value.trim();
             body.okx_passphrase = document.getElementById('okxPassphrase').value.trim();
-        } else {
+        } else if (exchange === 'bybit') {
             body.bybit_api_key = document.getElementById('bybitApiKey').value.trim();
             body.bybit_secret_key = document.getElementById('bybitSecretKey').value.trim();
+        } else if (exchange === 'bitget') {
+            body.bitget_api_key = document.getElementById('bitgetApiKey').value.trim();
+            body.bitget_secret_key = document.getElementById('bitgetSecretKey').value.trim();
+            body.bitget_passphrase = document.getElementById('bitgetPassphrase').value.trim();
         }
         
         try {
@@ -178,9 +189,13 @@ const App = {
             document.getElementById('okxApiKey').value = '';
             document.getElementById('okxSecretKey').value = '';
             document.getElementById('okxPassphrase').value = '';
-        } else {
+        } else if (exchange === 'bybit') {
             document.getElementById('bybitApiKey').value = '';
             document.getElementById('bybitSecretKey').value = '';
+        } else if (exchange === 'bitget') {
+            document.getElementById('bitgetApiKey').value = '';
+            document.getElementById('bitgetSecretKey').value = '';
+            document.getElementById('bitgetPassphrase').value = '';
         }
     },
 

@@ -96,7 +96,7 @@ async def get_symbols(days: int = Query(default=90, ge=1, le=365)):
 async def get_trades(
     days: int = Query(default=30, ge=1, le=365),
     symbol: str = Query(default="", description="Filter by symbol"),
-    exchange: str = Query(default="", description="Filter by exchange (OKX, Bybit)"),
+    exchange: str = Query(default="", description="Filter by exchange (OKX, Bybit, Bitget)"),
 ):
     trades = get_cached(days)
     if symbol:
@@ -120,7 +120,7 @@ async def get_klines(
     end_ms: int = Query(...),
     interval: str = Query(default="auto"),
     symbol: str = Query(default="BTC"),
-    exchange: str = Query(default="", description="OKX or Bybit"),
+    exchange: str = Query(default="", description="OKX, Bybit, or Bitget"),
 ):
     """Fetch K-lines for a specific trade. Exchange determines source."""
     if interval == "auto":
@@ -163,6 +163,11 @@ async def get_config():
             "secret_key": _mask_key(keys.BYBIT_SECRET_KEY),
             "configured": bool(keys.BYBIT_API_KEY)
         },
+        "bitget": {
+            "api_key": _mask_key(keys.BITGET_API_KEY),
+            "secret_key": _mask_key(keys.BITGET_SECRET_KEY),
+            "configured": bool(keys.BITGET_API_KEY)
+        },
         "ai": {
             "base_url": os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1"),
             "model": os.getenv("AI_MODEL", "deepseek-chat"),
@@ -193,6 +198,10 @@ async def update_config(request: Request):
         # Bybit
         "BYBIT_API_KEY": _validate_config_value("bybit_api_key", body.get("bybit_api_key", "")),
         "BYBIT_SECRET_KEY": _validate_config_value("bybit_secret_key", body.get("bybit_secret_key", "")),
+        # Bitget
+        "BITGET_API_KEY": body.get("bitget_api_key", ""),
+        "BITGET_SECRET_KEY": body.get("bitget_secret_key", ""),
+        "BITGET_PASSPHRASE": body.get("bitget_passphrase", ""),
         # AI
         "AI_BASE_URL": _normalize_ai_base_url(_validate_config_value("ai_base_url", body.get("ai_base_url", ""))),
         "AI_API_KEY": _validate_config_value("ai_api_key", body.get("ai_api_key", "")),

@@ -13,24 +13,28 @@ To add a new exchange:
 
 from .okx import fetch_okx_trades
 from .bybit import fetch_bybit_trades
+from .bitget import fetch_bitget_trades
 
 # ─── Registry ─────────────────────────────────────────────────────────────
 # Add new exchanges here: "Name": fetch_function
 EXCHANGES = {
     "OKX": fetch_okx_trades,
     "Bybit": fetch_bybit_trades,
+    "Bitget": fetch_bitget_trades,
 }
 
 
 def reinit_exchanges():
     """Reinitialize exchange connections after config change."""
     import importlib
-    from . import okx, bybit
+    from . import okx, bybit, bitget
     importlib.reload(okx)
     importlib.reload(bybit)
+    importlib.reload(bitget)
     # Update the registry with reloaded functions
     EXCHANGES["OKX"] = okx.fetch_okx_trades
     EXCHANGES["Bybit"] = bybit.fetch_bybit_trades
+    EXCHANGES["Bitget"] = bitget.fetch_bitget_trades
 
 
 async def get_all_trades(days: int = 30) -> list[dict]:
