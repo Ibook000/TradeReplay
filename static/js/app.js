@@ -502,4 +502,16 @@ const App = {
     },
 };
 
-document.addEventListener('DOMContentLoaded', () => App.init());
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('collapsed');
+    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+}
+
+// Restore sidebar state on load
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+    if (localStorage.getItem('sidebarCollapsed') === 'true') {
+        document.getElementById('sidebar').classList.add('collapsed');
+    }
+});

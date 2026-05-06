@@ -50,6 +50,47 @@ body {
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
+    position: relative;
+    transition: width 0.3s ease, min-width 0.3s ease;
+}
+
+.sidebar.collapsed {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.sidebar-toggle {
+    position: absolute;
+    left: 340px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 48px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text2);
+    z-index: 10;
+    transition: left 0.3s ease, background 0.2s;
+}
+
+.sidebar-toggle:hover {
+    background: var(--bg4);
+    color: var(--text);
+}
+
+.sidebar.collapsed ~ .sidebar-toggle {
+    left: 0;
+}
+
+.sidebar.collapsed ~ .sidebar-toggle svg {
+    transform: rotate(180deg);
 }
 
 .header {

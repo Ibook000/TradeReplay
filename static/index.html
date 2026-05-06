@@ -12,7 +12,12 @@
 </head>
 <body>
     <div class="app">
-        <div class="sidebar">
+        <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <div class="sidebar" id="sidebar">
             <div class="header">
                 <div class="header-top">
                     <h1>Trade Replay</h1>
