@@ -5,11 +5,12 @@ import time
 import json
 from pathlib import Path
 from collections import Counter
+from urllib.parse import urlparse, urlunparse
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 load_dotenv(Path(__file__).parent / ".env")
 
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -39,6 +40,32 @@ app.add_middleware(NoCacheMiddleware)
 load_from_disk()
 start_daily_scheduler()
 start_weekly_ai_scheduler()
+
+
+def _validate_config_value(field: str, value) -> str:
+    """Validate a submitted config value before writing it to .env."""
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise HTTPException(status_code=400, detail=f"{field} must be a string")
+    if "\n" in value or "\r" in value:
+        raise HTTPException(status_code=400, detail=f"{field} must not contain newline characters")
+    return value.strip()
+
+
+def _normalize_ai_base_url(value: str) -> str:
+    """Validate and normalize the AI base URL."""
+    if not value:
+        return ""
+
+    parsed = urlparse(value)
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
+        raise HTTPException(status_code=400, detail="AI_BASE_URL must be an absolute http(s) URL")
+    if parsed.params or parsed.query or parsed.fragment:
+        raise HTTPException(status_code=400, detail="AI_BASE_URL must not include params, query, or fragment")
+
+    normalized_path = parsed.path.rstrip("/")
+    return urlunparse((parsed.scheme.lower(), parsed.netloc, normalized_path, "", "", ""))
 
 
 def _mask_key(key: str) -> str:
@@ -149,52 +176,33 @@ async def get_config():
 async def update_config(request: Request):
     """Update configuration."""
     body = await request.json()
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Configuration payload must be a JSON object")
+    for field, value in body.items():
+        _validate_config_value(str(field), value)
     
     env_path = Path(__file__).parent / ".env"
+    env_path.touch(exist_ok=True)
     
-    # Read existing .env content
-    env_content = ""
-    if env_path.exists():
-        env_content = env_path.read_text()
-    
-    # Define all possible config keys
+    # Define and validate all possible config keys. Empty values mean "keep existing".
     config_map = {
         # OKX
-        "OKX_API_KEY": body.get("okx_api_key", ""),
-        "OKX_SECRET_KEY": body.get("okx_secret_key", ""),
-        "OKX_PASSPHRASE": body.get("okx_passphrase", ""),
+        "OKX_API_KEY": _validate_config_value("okx_api_key", body.get("okx_api_key", "")),
+        "OKX_SECRET_KEY": _validate_config_value("okx_secret_key", body.get("okx_secret_key", "")),
+        "OKX_PASSPHRASE": _validate_config_value("okx_passphrase", body.get("okx_passphrase", "")),
         # Bybit
-        "BYBIT_API_KEY": body.get("bybit_api_key", ""),
-        "BYBIT_SECRET_KEY": body.get("bybit_secret_key", ""),
+        "BYBIT_API_KEY": _validate_config_value("bybit_api_key", body.get("bybit_api_key", "")),
+        "BYBIT_SECRET_KEY": _validate_config_value("bybit_secret_key", body.get("bybit_secret_key", "")),
         # AI
-        "AI_BASE_URL": body.get("ai_base_url", ""),
-        "AI_API_KEY": body.get("ai_api_key", ""),
-        "AI_MODEL": body.get("ai_model", ""),
+        "AI_BASE_URL": _normalize_ai_base_url(_validate_config_value("ai_base_url", body.get("ai_base_url", ""))),
+        "AI_API_KEY": _validate_config_value("ai_api_key", body.get("ai_api_key", "")),
+        "AI_MODEL": _validate_config_value("ai_model", body.get("ai_model", "")),
     }
     
-    # Update or add config
-    lines = env_content.split("\n")
-    new_lines = []
-    updated_keys = set()
-    
-    for line in lines:
-        key = line.split("=")[0].strip() if "=" in line else ""
-        if key in config_map:
-            if config_map[key]:  # Only update if value is provided
-                new_lines.append(f"{key}={config_map[key]}")
-                updated_keys.add(key)
-            else:
-                new_lines.append(line)  # Keep existing value
-        else:
-            new_lines.append(line)
-    
-    # Add any new keys that weren't in the file
+    # Safely update provided values in .env using python-dotenv quoting.
     for key, value in config_map.items():
-        if key not in updated_keys and value:
-            new_lines.append(f"{key}={value}")
-    
-    # Write back to .env
-    env_path.write_text("\n".join(new_lines))
+        if value:
+            set_key(env_path, key, value, quote_mode="always")
     
     # Reload environment
     load_dotenv(env_path, override=True)
