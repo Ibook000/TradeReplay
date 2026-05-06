@@ -180,23 +180,6 @@ def get_total_count() -> int:
         conn.close()
 
 
-def migrate_from_json(json_file: str):
-    """Migrate trades from JSON file to PostgreSQL."""
-    import json
-    from pathlib import Path
-    
-    if not Path(json_file).exists():
-        print(f"[DB] JSON file not found: {json_file}", flush=True)
-        return
-    
-    try:
-        trades = json.loads(Path(json_file).read_text())
-        new_count = upsert_trades(trades)
-        print(f"[DB] Migrated {len(trades)} trades from JSON ({new_count} new)", flush=True)
-    except Exception as e:
-        print(f"[DB] Migration error: {e}", flush=True)
-
-
 def get_ai_analysis(symbol: str, week_start: str) -> dict | None:
     """Get cached AI analysis for a specific week. Returns dict or None."""
     conn = get_connection()

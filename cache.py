@@ -1,16 +1,12 @@
 """Trade data cache — PostgreSQL persistence, background refresh."""
 
 import time
-import re
 import threading
-from pathlib import Path
 
 from exchanges import get_all_trades
-from database import init_db, upsert_trades, get_trades, get_symbol_counts, get_total_count, migrate_from_json
+from database import init_db, upsert_trades, get_trades, get_symbol_counts, get_total_count
 
 # ─── Config ───────────────────────────────────────────────────────────────
-DATA_DIR = Path(__file__).parent / "data"
-TRADES_FILE = DATA_DIR / "all_trades.json"
 REFRESH_INTERVAL = 300
 DAILY_REFRESH_HOUR = 3  # 每天凌晨3点自动刷新
 
@@ -19,16 +15,8 @@ _last_refresh: float = 0
 
 
 def load_from_disk():
-    """Initialize database and migrate JSON data if exists."""
+    """Initialize database."""
     init_db()
-    
-    # Migrate existing JSON data to PostgreSQL
-    if TRADES_FILE.exists():
-        migrate_from_json(str(TRADES_FILE))
-        # Rename JSON file to avoid re-migration
-        TRADES_FILE.rename(TRADES_FILE.with_suffix(".json.migrated"))
-        print(f"[CACHE] Migrated JSON data to PostgreSQL", flush=True)
-    
     total = get_total_count()
     print(f"[CACHE] Database ready with {total} trades", flush=True)
 
