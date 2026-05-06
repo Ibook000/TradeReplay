@@ -2,6 +2,7 @@
 
 import time
 import threading
+import re
 
 from exchanges import get_all_trades
 from database import init_db, upsert_trades, get_trades, get_symbol_counts, get_total_count

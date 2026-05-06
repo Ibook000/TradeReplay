@@ -2,15 +2,19 @@
 
 import hashlib
 import hmac
+import os
 import time
 
 import httpx
-from .keys import BYBIT_API_KEY, BYBIT_SECRET_KEY
 
 # ─── Config ───────────────────────────────────────────────────────────────
-API_KEY = BYBIT_API_KEY
-SECRET = BYBIT_SECRET_KEY
+API_KEY = os.getenv("BYBIT_API_KEY", "").strip()
+SECRET = os.getenv("BYBIT_SECRET_KEY", "").strip()
 BASE_URL = "https://api.bybit.com"
+
+
+def _is_configured() -> bool:
+    return bool(API_KEY and SECRET)
 
 
 # ─── Auth ─────────────────────────────────────────────────────────────────
@@ -41,6 +45,9 @@ def _extract_symbol(raw_symbol: str) -> str:
 # ─── Test Connection ──────────────────────────────────────────────────────
 async def test_connection() -> dict:
     """Test Bybit API connection."""
+    if not _is_configured():
+        return {"status": "error", "message": "Bybit API credentials are not configured"}
+
     try:
         path = "/v5/account/wallet-balance"
         params = "accountType=UNIFIED"
@@ -65,6 +72,9 @@ async def fetch_bybit_trades(days: int = 30) -> list[dict]:
 
     Returns list of unified trade dicts with 'symbol' field.
     """
+    if not _is_configured():
+        return []
+
     now_ms = int(time.time() * 1000)
     start_ms = now_ms - days * 86400 * 1000
     path = "/v5/position/closed-pnl"

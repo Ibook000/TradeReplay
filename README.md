@@ -86,7 +86,6 @@ sudo systemctl restart postgresql
 
 ```bash
 cp .env.example .env
-cp exchanges/keys.py.example exchanges/keys.py
 ```
 
 Edit `.env`:
@@ -96,12 +95,15 @@ OKX_SECRET_KEY=your_secret
 OKX_PASSPHRASE=your_passphrase
 BYBIT_API_KEY=your_key
 BYBIT_SECRET_KEY=your_secret
+BITGET_API_KEY=your_key
+BITGET_SECRET_KEY=your_secret
+BITGET_PASSPHRASE=your_passphrase
 AI_BASE_URL=https://api.deepseek.com/v1
 AI_API_KEY=your_ai_key
 AI_MODEL=deepseek-chat
 ```
 
-Edit `exchanges/keys.py` with the same credentials.
+Exchange adapters read these environment variables directly, so no separate Python credentials file is required.
 
 ### 5. Run
 
@@ -123,6 +125,7 @@ After=postgresql.service
 Type=simple
 User=root
 WorkingDirectory=/root/TradeReplay
+Environment=PORT=80
 ExecStart=/usr/bin/python3 main.py
 Restart=always
 RestartSec=5
@@ -188,7 +191,7 @@ TradeReplay/
 │   ├── __init__.py      # Unified trade fetching
 │   ├── okx.py           # OKX adapter
 │   ├── bybit.py         # Bybit adapter
-│   └── keys.py.example  # Keys template
+│   └── keys.py.example  # Env var reference
 └── static/
     ├── index.html       # SPA frontend
     ├── css/style.css    # Dark theme + mobile
