@@ -68,6 +68,20 @@
             <div class="chart-header" id="chartHeader">
                 <span class="info">Select a trade to view details</span>
             </div>
+            <div class="replay-bar" id="replayBar" style="display:none;">
+                <button class="replay-btn" id="replayPlayBtn" onclick="App.replay.toggle()">Play</button>
+                <div class="replay-speeds">
+                    <button class="replay-speed active" data-speed="1" onclick="App.replay.setSpeed(1)">1x</button>
+                    <button class="replay-speed" data-speed="2" onclick="App.replay.setSpeed(2)">2x</button>
+                    <button class="replay-speed" data-speed="5" onclick="App.replay.setSpeed(5)">5x</button>
+                    <button class="replay-speed" data-speed="10" onclick="App.replay.setSpeed(10)">10x</button>
+                </div>
+                <div class="replay-progress-wrap">
+                    <div class="replay-progress" id="replayProgress"></div>
+                </div>
+                <span class="replay-counter" id="replayCounter">0/0</span>
+                <button class="replay-close" onclick="App.replay.stop()">&times;</button>
+            </div>
             <div class="chart-container">
                 <div id="chart"></div>
             </div>

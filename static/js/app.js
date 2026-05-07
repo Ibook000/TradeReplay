@@ -489,6 +489,7 @@ const App = {
     },
 
     async backToOverview() {
+        this.replay.stop();
         Trades.activeTradeId = -1;
         Trades.highlightCard(-1);
         KlineChart.clearPriceLines();
@@ -517,6 +518,7 @@ const App = {
             <span style="display:flex;align-items:center;gap:8px;">
                 <span class="info ${cls}" style="font-weight:600;font-size:12px">${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}</span>
                 <button class="ai-review-btn" id="aiReviewBtn" onclick="App.runTradeReview()">AI Review</button>
+                <button class="replay-trigger" onclick="App.startReplay()">Replay</button>
             </span>
         `;
         // Hide review panel when switching trades
@@ -631,6 +633,170 @@ const App = {
         }
 
         return html || escapeHtml(JSON.stringify(d));
+    },
+
+    // ─── Replay ─────────────────────────────────────────────────────────
+    replay: {
+        _timer: null,
+        _klines: [],
+        _markers: [],
+        _idx: 0,
+        _entryIdx: -1,
+        _exitIdx: -1,
+        _speed: 1,
+        _playing: false,
+        _trade: null,
+        _baseInterval: 400, // ms per candle at 1x
+
+        async start(trade) {
+            this.stop();
+            this._trade = trade;
+            this._playing = false;
+            this._speed = 1;
+
+            // Fetch K-lines for the trade window
+            const noOpenTime = trade.exchange === 'Bybit';
+            const padding = noOpenTime ? 30 * 86400 * 1000 : 12 * 3600 * 1000;
+            const startMs = (noOpenTime ? trade.close_ms : trade.open_ms) - padding;
+            const endMs = trade.close_ms + (noOpenTime ? 12 * 3600 * 1000 : padding);
+            const data = await API.fetchKlines(startMs, endMs, '5m', trade.symbol || App.currentSymbol, trade.exchange || '');
+            this._klines = data.klines;
+            if (!this._klines.length) return;
+
+            // Find entry/exit candle indices
+            const entrySec = Math.floor(trade.open_ms / 1000);
+            const exitSec = Math.floor(trade.close_ms / 1000);
+            this._entryIdx = this._klines.findIndex(k => k.time >= entrySec);
+            this._exitIdx = this._klines.findIndex(k => k.time >= exitSec);
+            if (this._entryIdx < 0) this._entryIdx = this._klines.length - 1;
+            if (this._exitIdx < 0) this._exitIdx = this._klines.length - 1;
+
+            // Start from 20 candles before entry (or 0)
+            this._idx = Math.max(0, this._entryIdx - 20);
+
+            // Set initial data (context before entry)
+            const initData = this._klines.slice(0, this._idx + 1);
+            KlineChart.setData(initData);
+            KlineChart.clearMarkers();
+            KlineChart.clearPriceLines();
+            KlineChart.fitContent();
+
+            // Show replay bar
+            document.getElementById('replayBar').style.display = 'flex';
+            this._markers = [];
+            this._updateUI();
+            this.setSpeed(1);
+        },
+
+        toggle() {
+            if (this._playing) this.pause();
+            else this.play();
+        },
+
+        play() {
+            if (this._idx >= this._klines.length - 1) {
+                // Restart if at end
+                this._idx = Math.max(0, this._entryIdx - 20);
+                const initData = this._klines.slice(0, this._idx + 1);
+                KlineChart.setData(initData);
+                this._markers = [];
+                KlineChart.clearMarkers();
+            }
+            this._playing = true;
+            document.getElementById('replayPlayBtn').textContent = 'Pause';
+            this._tick();
+        },
+
+        pause() {
+            this._playing = false;
+            document.getElementById('replayPlayBtn').textContent = 'Play';
+            if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+        },
+
+        stop() {
+            this.pause();
+            document.getElementById('replayBar').style.display = 'none';
+            this._klines = [];
+            this._trade = null;
+        },
+
+        setSpeed(s) {
+            this._speed = s;
+            document.querySelectorAll('.replay-speed').forEach(b => {
+                b.classList.toggle('active', Number(b.dataset.speed) === s);
+            });
+        },
+
+        _tick() {
+            if (!this._playing || this._idx >= this._klines.length - 1) {
+                if (this._idx >= this._klines.length - 1) this.pause();
+                return;
+            }
+
+            this._idx++;
+            const candle = this._klines[this._idx];
+
+            // Update chart with new candle
+            KlineChart.candleSeries.update(candle);
+            KlineChart.volumeSeries.update({
+                time: candle.time,
+                value: candle.volume,
+                color: candle.close >= candle.open ? '#00e67630' : '#ff525230',
+            });
+
+            // Scroll to keep candle visible
+            const from = this._klines[Math.max(0, this._idx - 60)].time;
+            const to = candle.time + (candle.time - this._klines[Math.max(0, this._idx - 1)].time) * 5;
+            KlineChart.instance.timeScale().setVisibleRange({ from, to });
+
+            // Add markers at entry/exit
+            const markers = [];
+            const t = this._trade;
+            const isLong = t.direction === 'long';
+            const color = isLong ? '#00e676' : '#ff5252';
+
+            if (this._idx === this._entryIdx) {
+                markers.push({
+                    time: candle.time,
+                    position: isLong ? 'belowBar' : 'aboveBar',
+                    color: color,
+                    shape: isLong ? 'arrowUp' : 'arrowDown',
+                    text: `ENTRY ${fmtPrice(t.open_price)}`,
+                });
+            }
+            if (this._idx === this._exitIdx) {
+                markers.push({
+                    time: candle.time,
+                    position: isLong ? 'aboveBar' : 'belowBar',
+                    color: color,
+                    shape: isLong ? 'arrowDown' : 'arrowUp',
+                    text: `EXIT ${fmtPrice(t.close_price)}  ${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}`,
+                });
+            }
+            if (markers.length) {
+                this._markers.push(...markers);
+                KlineChart.candleSeries.setMarkers([...this._markers].sort((a, b) => a.time - b.time));
+            }
+
+            this._updateUI();
+
+            // Schedule next tick
+            const delay = this._baseInterval / this._speed;
+            this._timer = setTimeout(() => this._tick(), delay);
+        },
+
+        _updateUI() {
+            const total = this._klines.length;
+            const current = this._idx;
+            document.getElementById('replayCounter').textContent = `${current}/${total}`;
+            document.getElementById('replayProgress').style.width = `${(current / total * 100).toFixed(1)}%`;
+        },
+    },
+
+    async startReplay() {
+        const t = Trades.allTrades[Trades.activeTradeId];
+        if (!t) return;
+        await this.replay.start(t);
     },
 };
 

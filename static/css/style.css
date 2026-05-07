@@ -376,6 +376,109 @@ select:focus { outline: none; border-color: var(--blue); }
     color: var(--green);
 }
 
+/* ─── Replay Controls ──────────────────────────────────────────────────── */
+.replay-trigger {
+    background: rgba(41, 121, 255, 0.08);
+    border: 1px solid rgba(41, 121, 255, 0.2);
+    color: var(--blue);
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: all var(--transition);
+    white-space: nowrap;
+}
+.replay-trigger:hover {
+    background: rgba(41, 121, 255, 0.15);
+    border-color: var(--blue);
+}
+
+.replay-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.replay-btn {
+    background: var(--blue-dim);
+    border: 1px solid rgba(41, 121, 255, 0.2);
+    color: var(--blue);
+    padding: 4px 14px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    min-width: 56px;
+    transition: all var(--transition);
+}
+.replay-btn:hover { background: rgba(41, 121, 255, 0.2); }
+
+.replay-speeds {
+    display: flex;
+    gap: 2px;
+}
+.replay-speed {
+    background: var(--bg4);
+    border: 1px solid transparent;
+    color: var(--text3);
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: monospace;
+    transition: all var(--transition);
+}
+.replay-speed.active {
+    background: var(--blue-dim);
+    border-color: rgba(41, 121, 255, 0.3);
+    color: var(--blue);
+}
+.replay-speed:hover { color: var(--text2); }
+
+.replay-progress-wrap {
+    flex: 1;
+    height: 4px;
+    background: var(--bg4);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.replay-progress {
+    height: 100%;
+    width: 0;
+    background: var(--blue);
+    border-radius: 2px;
+    transition: width 0.1s linear;
+}
+
+.replay-counter {
+    font-size: 9px;
+    font-family: monospace;
+    color: var(--text3);
+    min-width: 50px;
+    text-align: right;
+}
+
+.replay-close {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+.replay-close:hover { color: var(--text); }
+
 /* ─── Loading ──────────────────────────────────────────────────────────── */
 .loading {
     display: flex;
