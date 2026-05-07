@@ -768,10 +768,8 @@ const App = {
                 color: candle.close >= candle.open ? '#00e67630' : '#ff525230',
             });
 
-            // Scroll to keep candle visible
-            const from = this._klines[Math.max(0, this._idx - 60)].time;
-            const to = candle.time + (candle.time - this._klines[Math.max(0, this._idx - 1)].time) * 5;
-            KlineChart.instance.timeScale().setVisibleRange({ from, to });
+            // Scroll to keep latest candle visible (don't force zoom level)
+            KlineChart.instance.timeScale().scrollToPosition(-5, false);
 
             // Add markers at entry/exit
             const markers = [];
