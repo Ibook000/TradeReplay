@@ -30,6 +30,9 @@ const App = {
             this.currentExchange = document.getElementById('exchangeSelect').value;
             this.loadTrades();
         });
+        document.getElementById('directionSelect').addEventListener('change', () => this.loadTrades());
+        document.getElementById('pnlSelect').addEventListener('change', () => this.loadTrades());
+        document.getElementById('leverageSelect').addEventListener('change', () => this.loadTrades());
         document.getElementById('statsBtn').addEventListener('click', () => this.togglePanel('statsPanel'));
         document.getElementById('closeStatsBtn').addEventListener('click', () => this.closePanel('statsPanel'));
         document.getElementById('aiAnalyzeBtn').addEventListener('click', () => this.runAiAnalysis());
@@ -441,7 +444,18 @@ const App = {
 
         try {
             const data = await API.fetchTrades(days, this.currentSymbol, this.currentExchange);
-            Trades.allTrades = data.trades;
+            let trades = data.trades;
+
+            // Apply client-side filters
+            const dir = document.getElementById('directionSelect').value;
+            const pnl = document.getElementById('pnlSelect').value;
+            const lev = document.getElementById('leverageSelect').value;
+            if (dir) trades = trades.filter(t => t.direction === dir);
+            if (pnl === 'win') trades = trades.filter(t => t.pnl > 0);
+            if (pnl === 'loss') trades = trades.filter(t => t.pnl <= 0);
+            if (lev) trades = trades.filter(t => (t.leverage || 0) >= Number(lev));
+
+            Trades.allTrades = trades;
             Trades.renderStats(Trades.allTrades);
             Trades.renderList(Trades.allTrades);
 
