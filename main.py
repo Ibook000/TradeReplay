@@ -18,7 +18,7 @@ import httpx
 
 from cache import get_cached, get_store_count, maybe_refresh, force_refresh, load_from_disk, start_daily_scheduler, start_weekly_ai_scheduler, _run_weekly_ai_analysis
 from klines import fetch_klines, pick_interval
-from database import get_ai_analysis, save_ai_analysis, get_ai_history, get_trades as db_get_trades
+from database import get_ai_analysis, save_ai_analysis, get_ai_history, get_trade_review, save_trade_review, get_trades as db_get_trades
 
 # ─── App ────────────────────────────────────────────────────────────────
 app = FastAPI(title="Trade Replay")
@@ -299,6 +299,152 @@ async def ai_trigger():
     import threading
     threading.Thread(target=_run_weekly_ai_analysis, daemon=True).start()
     return {"status": "triggered", "message": "Weekly AI analysis started in background"}
+
+
+@app.post("/api/review_trade")
+async def review_trade(request: Request):
+    """AI review for a single trade. Returns cached result if available."""
+    import re as _re
+    body = await request.json()
+    trade_id = body.get("trade_id", "")
+    if not trade_id:
+        raise HTTPException(status_code=400, detail="trade_id required")
+
+    # Check cache first
+    cached = get_trade_review(trade_id)
+    if cached:
+        return {"found": True, "cached": True, **cached}
+
+    # Find the trade in cache
+    trades = get_cached(days=365)
+    trade = next((t for t in trades if t.get("id") == trade_id), None)
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+
+    # Fetch K-lines for context
+    symbol = trade.get("symbol", "BTC")
+    exchange = trade.get("exchange", "")
+    no_open_time = exchange == "Bybit"
+    padding = 30 * 86400 * 1000 if no_open_time else 12 * 3600 * 1000
+    start_ms = (trade.get("close_ms", 0) if no_open_time else trade.get("open_ms", 0)) - padding
+    end_ms = trade.get("close_ms", 0) + (12 * 3600 * 1000 if no_open_time else padding)
+    klines = await fetch_klines(symbol, "5m", start_ms, end_ms, exchange)
+
+    # Build simplified K-line summary around the trade window
+    open_ms = trade.get("open_ms", 0)
+    close_ms = trade.get("close_ms", 0)
+    trade_start = min(open_ms, close_ms) // 1000 if open_ms else close_ms // 1000
+    trade_end = close_ms // 1000
+    # Filter K-lines within trade window (with some context)
+    context_start = trade_start - 3600  # 1h before
+    context_end = trade_end + 3600      # 1h after
+    relevant = [k for k in klines if k.get("time", 0) >= context_start and k.get("time", 0) <= context_end]
+
+    # Simplify: take every Nth candle to keep prompt small
+    if len(relevant) > 40:
+        step = len(relevant) // 30
+        relevant = relevant[::step][:30]
+
+    kline_text = ""
+    for k in relevant:
+        ts = k.get("time", 0)
+        from datetime import datetime, timezone, timedelta
+        dt = datetime.fromtimestamp(ts, tz=timezone(timedelta(hours=8)))
+        kline_text += f"  {dt.strftime('%m-%d %H:%M')} O:{k['open']:.2f} H:{k['high']:.2f} L:{k['low']:.2f} C:{k['close']:.2f}\n"
+
+    direction = trade.get("direction", "long")
+    entry = trade.get("open_price", 0)
+    exit_p = trade.get("close_price", 0)
+    hold = trade.get("hold_hours", 0)
+    lev = trade.get("leverage", 1)
+    pnl = trade.get("pnl", 0)
+    fee = trade.get("fee", 0)
+
+    # Calculate price change %
+    price_chg = ((exit_p - entry) / entry * 100) if entry else 0
+    if direction == "short":
+        price_chg = -price_chg
+
+    prompt = f"""分析以下单笔合约交易，用犀利的毒舌风格点评。
+
+交易信息:
+- 币种: {symbol} ({exchange})
+- 方向: {direction.upper()} {lev}x
+- 入场价: {entry:.4f}
+- 出场价: {exit_p:.4f}
+- 价格变动: {price_chg:+.2f}%
+- 持仓时间: {hold:.1f} 小时
+- 盈亏: {pnl:+.2f} USDT
+- 手续费: {fee:.2f} USDT
+
+K线数据 (5分钟, UTC+8):
+{kline_text}
+
+严格按以下JSON格式输出，不要输出任何其他内容:
+{{
+  "summary": "一句话毒舌总评，20字以内",
+  "score": 0到100的整数评分,
+  "entry_analysis": "入场时机分析，用数据说话，50字以内",
+  "exit_analysis": "出场时机分析，用数据说话，50字以内",
+  "top_issues": [
+    {{"title": "问题标题", "detail": "用K线数据说明", "severity": "high或medium或low"}}
+  ],
+  "action_items": [
+    {{"action": "具体改进建议", "priority": 1到5}}
+  ]
+}}
+
+要求:
+1. top_issues 最多3个
+2. action_items 最多3个
+3. 语气犀利毒舌，直接骂，不要客套
+4. 引用具体K线价格数据"""
+
+    api_key = os.getenv("AI_API_KEY", "").strip()
+    base_url = os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1").strip().rstrip("/")
+    model = os.getenv("AI_MODEL", "deepseek-chat").strip()
+
+    if not api_key:
+        raise HTTPException(status_code=500, detail="AI API key not configured")
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                f"{base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": "你是犀利的合约交易教练。必须严格输出合法JSON，不要输出任何其他文本、markdown或代码块标记。"},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 2000
+                }
+            )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"AI API error: {resp.status_code}")
+
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
+        # Strip markdown code block if present
+        if raw.startswith("```"):
+            raw = _re.sub(r'^```(?:json)?\s*', '', raw)
+            raw = _re.sub(r'\s*```$', '', raw)
+
+        # Validate JSON
+        try:
+            parsed = json.loads(raw)
+            review_text = json.dumps(parsed, ensure_ascii=False)
+        except json.JSONDecodeError:
+            review_text = raw
+
+        # Save to DB
+        save_trade_review(trade_id, exchange, symbol, direction, pnl, review_text)
+
+        return {"found": True, "cached": False, "trade_id": trade_id, "review": review_text}
+
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"AI request failed: {e}")
 
 
 if __name__ == "__main__":

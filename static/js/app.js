@@ -36,6 +36,7 @@ const App = {
         document.getElementById('closeAiPanel').addEventListener('click', () => this.closePanel('aiPanel'));
         document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
         document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closePanel('settingsPanel'));
+        document.getElementById('closeReviewBtn').addEventListener('click', () => this.closePanel('reviewPanel'));
     },
 
     togglePanel(id) {
@@ -498,6 +499,7 @@ const App = {
         const el = document.getElementById('chartHeader');
         if (!trade) {
             el.innerHTML = `<span class="info"><strong>${escapeHtml(this.currentSymbol)}</strong> Overview</span><span class="info">${Trades.allTrades.length} trades</span>`;
+            this.closePanel('reviewPanel');
             return;
         }
         const cls = trade.pnl >= 0 ? 'positive' : 'negative';
@@ -512,8 +514,123 @@ const App = {
                 Exit <strong>${fmtPrice(trade.close_price)}</strong> |
                 Hold <strong>${trade.hold_hours.toFixed(1)}h</strong>
             </span>
-            <span class="info ${cls}" style="font-weight:600;font-size:12px">${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}</span>
+            <span style="display:flex;align-items:center;gap:8px;">
+                <span class="info ${cls}" style="font-weight:600;font-size:12px">${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}</span>
+                <button class="ai-review-btn" id="aiReviewBtn" onclick="App.runTradeReview()">AI Review</button>
+            </span>
         `;
+        // Hide review panel when switching trades
+        this.closePanel('reviewPanel');
+    },
+
+    async runTradeReview() {
+        const t = Trades.allTrades[Trades.activeTradeId];
+        if (!t) return;
+
+        const btn = document.getElementById('aiReviewBtn');
+        const content = document.getElementById('reviewContent');
+
+        // Open side-panel, close others
+        this.togglePanel('reviewPanel');
+        btn.disabled = true;
+        btn.textContent = '...';
+        content.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Analyzing...</span></div>';
+
+        try {
+            const resp = await fetch('/api/review_trade', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ trade_id: t.id })
+            });
+            const data = await resp.json();
+
+            if (data.found) {
+                content.innerHTML = this.formatTradeReview(data.review);
+                btn.textContent = data.cached ? 'Cached' : 'Done';
+                btn.classList.add('done');
+            } else {
+                content.innerHTML = `<div class="highlight">Error: ${escapeHtml(data.detail || 'Unknown')}</div>`;
+                btn.textContent = 'Retry';
+            }
+        } catch (e) {
+            content.innerHTML = `<div class="highlight">Failed: ${escapeHtml(e.message)}</div>`;
+            btn.textContent = 'Retry';
+        }
+        btn.disabled = false;
+    },
+
+    formatTradeReview(text) {
+        // Try JSON parse first
+        try {
+            const d = JSON.parse(text);
+            return this.renderReviewJson(d);
+        } catch (e) { /* not JSON */ }
+        // Plain text fallback
+        return `<div style="font-size:11px;color:#e1e1e6;line-height:1.6;white-space:pre-wrap;">${escapeHtml(text)}</div>`;
+    },
+
+    renderReviewJson(d) {
+        const sevColor = { high: '#ff3d3d', medium: '#fbbf24', low: '#5a5a6e' };
+        const sevLabel = { high: 'HIGH', medium: 'MED', low: 'LOW' };
+        let html = '';
+
+        // Summary + Score
+        if (d.summary) {
+            const rawScore = Number(d.score);
+            const score = Number.isFinite(rawScore) ? rawScore : '--';
+            const scoreColor = rawScore >= 60 ? '#00c853' : rawScore >= 40 ? '#fbbf24' : '#ff3d3d';
+            html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <div style="font-size:32px;font-weight:700;font-family:monospace;color:${scoreColor};">${score}</div>
+                <div style="flex:1;">
+                    <div style="font-size:13px;font-weight:600;color:#e1e1e6;">${escapeHtml(d.summary)}</div>
+                    <div style="font-size:9px;color:#5a5a6e;margin-top:2px;">TRADE SCORE</div>
+                </div>
+            </div>`;
+        }
+
+        // Entry/Exit analysis
+        if (d.entry_analysis) {
+            html += `<div style="background:rgba(0,200,83,0.06);border-left:3px solid #00c853;padding:8px 10px;margin-bottom:6px;border-radius:0 4px 4px 0;">
+                <div style="font-size:9px;color:#00c853;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Entry</div>
+                <div style="font-size:11px;color:#e1e1e6;margin-top:4px;line-height:1.5;">${escapeHtml(d.entry_analysis)}</div>
+            </div>`;
+        }
+        if (d.exit_analysis) {
+            html += `<div style="background:rgba(255,61,61,0.06);border-left:3px solid #ff3d3d;padding:8px 10px;margin-bottom:6px;border-radius:0 4px 4px 0;">
+                <div style="font-size:9px;color:#ff3d3d;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Exit</div>
+                <div style="font-size:11px;color:#e1e1e6;margin-top:4px;line-height:1.5;">${escapeHtml(d.exit_analysis)}</div>
+            </div>`;
+        }
+
+        // Issues
+        if (d.top_issues?.length) {
+            html += `<div style="font-size:9px;color:#ff3d3d;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;">Issues</div>`;
+            for (const issue of d.top_issues) {
+                const c = sevColor[issue.severity] || '#5a5a6e';
+                const label = sevLabel[issue.severity] || issue.severity;
+                html += `<div style="background:rgba(255,61,61,0.06);border-left:3px solid ${c};padding:8px 10px;margin-bottom:6px;border-radius:0 4px 4px 0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:11px;font-weight:600;color:#e1e1e6;">${escapeHtml(issue.title)}</span>
+                        <span style="font-size:8px;font-weight:700;color:${c};background:${c}22;padding:1px 5px;border-radius:2px;">${escapeHtml(label)}</span>
+                    </div>
+                    <div style="font-size:10px;color:#8a8a9a;margin-top:4px;line-height:1.5;">${escapeHtml(issue.detail)}</div>
+                </div>`;
+            }
+        }
+
+        // Action items
+        if (d.action_items?.length) {
+            html += `<div style="font-size:9px;color:#00c853;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;">Action Items</div>`;
+            const sorted = [...d.action_items].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+            for (const item of sorted) {
+                html += `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;">
+                    <span style="font-size:9px;font-weight:700;color:#0f172a;background:#00c853;padding:1px 5px;border-radius:2px;min-width:16px;text-align:center;">P${escapeHtml(item.priority || '-')}</span>
+                    <span style="font-size:11px;color:#e1e1e6;line-height:1.5;">${escapeHtml(item.action)}</span>
+                </div>`;
+            }
+        }
+
+        return html || escapeHtml(JSON.stringify(d));
     },
 };
 

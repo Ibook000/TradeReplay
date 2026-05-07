@@ -254,6 +254,56 @@ def save_ai_analysis(symbol: str, week_start: str, week_end: str,
             conn.close()
 
 
+def get_trade_review(trade_id: str) -> dict | None:
+    """Get cached AI review for a single trade. Returns dict or None."""
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT trade_id, exchange, symbol, direction, pnl, review, created_at
+                FROM trade_reviews WHERE trade_id = %s
+            """, (trade_id,))
+            row = cur.fetchone()
+            if row:
+                d = dict(row)
+                if d.get("pnl") is not None:
+                    d["pnl"] = float(d["pnl"])
+                return d
+            return None
+    except Exception as e:
+        print(f"[DB] Trade review read error: {e}", flush=True)
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
+def save_trade_review(trade_id: str, exchange: str, symbol: str,
+                      direction: str, pnl: float, review: str):
+    """Save AI review for a single trade (upsert by trade_id)."""
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO trade_reviews (trade_id, exchange, symbol, direction, pnl, review)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (trade_id) DO UPDATE SET
+                    review = EXCLUDED.review,
+                    created_at = CURRENT_TIMESTAMP
+            """, (trade_id, exchange, symbol, direction, pnl, review))
+        conn.commit()
+        print(f"[DB] Saved trade review for {trade_id}", flush=True)
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"[DB] Trade review save error: {e}", flush=True)
+    finally:
+        if conn:
+            conn.close()
+
+
 def get_ai_history(symbol: str = 'ALL', limit: int = 12) -> list[dict]:
     """Get AI analysis history, newest first."""
     conn = None

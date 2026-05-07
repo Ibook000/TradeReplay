@@ -56,3 +56,16 @@ CREATE TABLE IF NOT EXISTS ai_analyses (
 
 CREATE INDEX IF NOT EXISTS idx_ai_week ON ai_analyses(symbol, week_start);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_unique_week ON ai_analyses(symbol, week_start);
+
+-- Single-trade AI review cache table
+CREATE TABLE IF NOT EXISTS trade_reviews (
+    trade_id VARCHAR(64) PRIMARY KEY REFERENCES trades(id),
+    exchange VARCHAR(16) NOT NULL,
+    symbol VARCHAR(16) NOT NULL,
+    direction VARCHAR(8) NOT NULL,
+    pnl NUMERIC(20,8),
+    review TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_trade_reviews_symbol ON trade_reviews(symbol);
