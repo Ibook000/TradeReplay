@@ -3,16 +3,20 @@
 import hashlib
 import hmac
 import base64
+import os
 import time
 
 import httpx
-from .keys import BITGET_API_KEY, BITGET_SECRET_KEY, BITGET_PASSPHRASE
 
 # ─── Config ───────────────────────────────────────────────────────────────
-API_KEY = BITGET_API_KEY
-SECRET = BITGET_SECRET_KEY
-PASSPHRASE = BITGET_PASSPHRASE
+API_KEY = os.getenv("BITGET_API_KEY", "").strip()
+SECRET = os.getenv("BITGET_SECRET_KEY", "").strip()
+PASSPHRASE = os.getenv("BITGET_PASSPHRASE", "").strip()
 BASE_URL = "https://api.bitget.com"
+
+
+def _is_configured() -> bool:
+    return bool(API_KEY and SECRET and PASSPHRASE)
 
 
 # ─── Auth ─────────────────────────────────────────────────────────────────
@@ -43,6 +47,9 @@ def _extract_symbol(raw_symbol: str) -> str:
 # ─── Test Connection ──────────────────────────────────────────────────────
 async def test_connection() -> dict:
     """Test Bitget API connection."""
+    if not _is_configured():
+        return {"status": "error", "message": "Bitget API credentials are not configured"}
+
     try:
         path = "/api/v2/mix/account/accounts"
         query = "productType=USDT-FUTURES"
@@ -70,6 +77,9 @@ async def fetch_bitget_trades(days: int = 30) -> list[dict]:
 
     Returns list of unified trade dicts with 'symbol' field.
     """
+    if not _is_configured():
+        return []
+
     now_ms = int(time.time() * 1000)
     # Bitget position history API only supports max 90 days
     actual_days = min(days, 89)

@@ -146,27 +146,31 @@ async def get_klines_range(
 @app.get("/api/config")
 async def get_config():
     """Get all configuration (masked keys)."""
-    # Reload keys from env
-    from exchanges import keys
-    import importlib
-    importlib.reload(keys)
-    
+    okx_api_key = os.getenv("OKX_API_KEY", "")
+    okx_secret_key = os.getenv("OKX_SECRET_KEY", "")
+    okx_passphrase = os.getenv("OKX_PASSPHRASE", "")
+    bybit_api_key = os.getenv("BYBIT_API_KEY", "")
+    bybit_secret_key = os.getenv("BYBIT_SECRET_KEY", "")
+    bitget_api_key = os.getenv("BITGET_API_KEY", "")
+    bitget_secret_key = os.getenv("BITGET_SECRET_KEY", "")
+    bitget_passphrase = os.getenv("BITGET_PASSPHRASE", "")
+
     return {
         "okx": {
-            "api_key": _mask_key(keys.OKX_API_KEY),
-            "secret_key": _mask_key(keys.OKX_SECRET_KEY),
-            "passphrase": _mask_key(keys.OKX_PASSPHRASE),
-            "configured": bool(keys.OKX_API_KEY)
+            "api_key": _mask_key(okx_api_key),
+            "secret_key": _mask_key(okx_secret_key),
+            "passphrase": _mask_key(okx_passphrase),
+            "configured": bool(okx_api_key and okx_secret_key and okx_passphrase)
         },
         "bybit": {
-            "api_key": _mask_key(keys.BYBIT_API_KEY),
-            "secret_key": _mask_key(keys.BYBIT_SECRET_KEY),
-            "configured": bool(keys.BYBIT_API_KEY)
+            "api_key": _mask_key(bybit_api_key),
+            "secret_key": _mask_key(bybit_secret_key),
+            "configured": bool(bybit_api_key and bybit_secret_key)
         },
         "bitget": {
-            "api_key": _mask_key(keys.BITGET_API_KEY),
-            "secret_key": _mask_key(keys.BITGET_SECRET_KEY),
-            "configured": bool(keys.BITGET_API_KEY)
+            "api_key": _mask_key(bitget_api_key),
+            "secret_key": _mask_key(bitget_secret_key),
+            "configured": bool(bitget_api_key and bitget_secret_key and bitget_passphrase)
         },
         "ai": {
             "base_url": os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1"),
@@ -299,4 +303,4 @@ async def ai_trigger():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=80)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "80")))

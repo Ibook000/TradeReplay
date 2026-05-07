@@ -24,16 +24,22 @@ def get_connection():
 def init_db():
     """Initialize database schema from schema.sql."""
     schema_file = Path(__file__).parent / "schema.sql"
-    if schema_file.exists():
+    if not schema_file.exists():
+        return
+
+    conn = None
+    try:
         conn = get_connection()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(schema_file.read_text())
-            conn.commit()
-            print("[DB] Schema initialized", flush=True)
-        except Exception as e:
-            print(f"[DB] Schema init error: {e}", flush=True)
-        finally:
+        with conn.cursor() as cur:
+            cur.execute(schema_file.read_text())
+        conn.commit()
+        print("[DB] Schema initialized", flush=True)
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"[DB] Schema init error: {e}", flush=True)
+    finally:
+        if conn:
             conn.close()
 
 
@@ -42,9 +48,10 @@ def upsert_trades(trades: list[dict]) -> int:
     if not trades:
         return 0
     
-    conn = get_connection()
+    conn = None
     new_count = 0
     try:
+        conn = get_connection()
         with conn.cursor() as cur:
             for t in trades:
                 # Check if trade exists
@@ -90,10 +97,12 @@ def upsert_trades(trades: list[dict]) -> int:
         conn.commit()
         print(f"[DB] Upserted {len(trades)} trades, {new_count} new", flush=True)
     except Exception as e:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         print(f"[DB] Upsert error: {e}", flush=True)
     finally:
-        conn.close()
+        if conn:
+            conn.close()
     
     return new_count
 
@@ -104,8 +113,9 @@ def get_trades(days: int = 30, symbol: str = "") -> list[dict]:
     now_ms = int(time.time() * 1000)
     cutoff_ms = now_ms - days * 86400 * 1000
     
-    conn = get_connection()
+    conn = None
     try:
+        conn = get_connection()
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             query = """
                 SELECT id, exchange, symbol, direction, open_ms, close_ms,
@@ -139,7 +149,8 @@ def get_trades(days: int = 30, symbol: str = "") -> list[dict]:
         print(f"[DB] Query error: {e}", flush=True)
         return []
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 def get_symbol_counts(days: int = 90) -> list[dict]:
@@ -148,8 +159,9 @@ def get_symbol_counts(days: int = 90) -> list[dict]:
     now_ms = int(time.time() * 1000)
     cutoff_ms = now_ms - days * 86400 * 1000
     
-    conn = get_connection()
+    conn = None
     try:
+        conn = get_connection()
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT symbol, COUNT(*) as count
@@ -163,13 +175,15 @@ def get_symbol_counts(days: int = 90) -> list[dict]:
         print(f"[DB] Symbol count error: {e}", flush=True)
         return []
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 def get_total_count() -> int:
     """Get total number of trades in database."""
-    conn = get_connection()
+    conn = None
     try:
+        conn = get_connection()
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM trades")
             return cur.fetchone()[0]
@@ -177,13 +191,15 @@ def get_total_count() -> int:
         print(f"[DB] Count error: {e}", flush=True)
         return 0
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 def get_ai_analysis(symbol: str, week_start: str) -> dict | None:
     """Get cached AI analysis for a specific week. Returns dict or None."""
-    conn = get_connection()
+    conn = None
     try:
+        conn = get_connection()
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT id, symbol, week_start, week_end, trade_count,
@@ -203,15 +219,17 @@ def get_ai_analysis(symbol: str, week_start: str) -> dict | None:
         print(f"[DB] AI cache read error: {e}", flush=True)
         return None
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 def save_ai_analysis(symbol: str, week_start: str, week_end: str,
                      trade_count: int, total_pnl: float, win_rate: float,
                      analysis: str):
     """Save AI analysis to cache (upsert by symbol+week_start)."""
-    conn = get_connection()
+    conn = None
     try:
+        conn = get_connection()
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO ai_analyses (symbol, week_start, week_end, trade_count,
@@ -228,16 +246,19 @@ def save_ai_analysis(symbol: str, week_start: str, week_end: str,
         conn.commit()
         print(f"[DB] Saved AI analysis for {symbol} week {week_start}", flush=True)
     except Exception as e:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         print(f"[DB] AI cache save error: {e}", flush=True)
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 def get_ai_history(symbol: str = 'ALL', limit: int = 12) -> list[dict]:
     """Get AI analysis history, newest first."""
-    conn = get_connection()
+    conn = None
     try:
+        conn = get_connection()
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT id, symbol, week_start, week_end, trade_count,
@@ -260,4 +281,5 @@ def get_ai_history(symbol: str = 'ALL', limit: int = 12) -> list[dict]:
         print(f"[DB] AI history error: {e}", flush=True)
         return []
     finally:
-        conn.close()
+        if conn:
+            conn.close()

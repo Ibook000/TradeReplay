@@ -3,17 +3,21 @@
 import hashlib
 import hmac
 import base64
+import os
 import time
 from datetime import datetime, timezone
 
 import httpx
-from .keys import OKX_API_KEY, OKX_SECRET_KEY, OKX_PASSPHRASE
 
 # ─── Config ───────────────────────────────────────────────────────────────
-API_KEY = OKX_API_KEY
-SECRET = OKX_SECRET_KEY
-PASSPHRASE = OKX_PASSPHRASE
+API_KEY = os.getenv("OKX_API_KEY", "").strip()
+SECRET = os.getenv("OKX_SECRET_KEY", "").strip()
+PASSPHRASE = os.getenv("OKX_PASSPHRASE", "").strip()
 BASE_URL = "https://www.okx.com"
+
+
+def _is_configured() -> bool:
+    return bool(API_KEY and SECRET and PASSPHRASE)
 
 
 # ─── Auth ─────────────────────────────────────────────────────────────────
@@ -44,6 +48,9 @@ def _extract_symbol(inst_id: str) -> str:
 # ─── Test Connection ──────────────────────────────────────────────────────
 async def test_connection() -> dict:
     """Test OKX API connection."""
+    if not _is_configured():
+        return {"status": "error", "message": "OKX API credentials are not configured"}
+
     try:
         path = "/api/v5/account/balance"
         headers = _headers("GET", path)
@@ -65,6 +72,9 @@ async def fetch_okx_trades(days: int = 30) -> list[dict]:
 
     Returns list of unified trade dicts with 'symbol' field.
     """
+    if not _is_configured():
+        return []
+
     path = "/api/v5/account/positions-history"
     all_positions = []
     after = ""

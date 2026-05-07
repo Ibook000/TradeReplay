@@ -1,23 +1,20 @@
-"""API keys — loaded from environment variables.
+"""API key settings loaded from environment variables.
 
-Set these in your .env file or as environment variables:
-  OKX_API_KEY, OKX_SECRET_KEY, OKX_PASSPHRASE
-  BYBIT_API_KEY, BYBIT_SECRET_KEY
+Copying this file is no longer required for deployment; exchange adapters read
+these variables directly from the environment. Keep this example as a reference
+for the expected names.
 """
 
 import os
 
 
-def _get(key: str) -> str:
-    val = os.environ.get(key, "")
-    if not val:
-        raise RuntimeError(f"Missing environment variable: {key}")
-    return val
+OKX_API_KEY = os.getenv("OKX_API_KEY", "").strip()
+OKX_SECRET_KEY = os.getenv("OKX_SECRET_KEY", "").strip()
+OKX_PASSPHRASE = os.getenv("OKX_PASSPHRASE", "").strip()
 
+BYBIT_API_KEY = os.getenv("BYBIT_API_KEY", "").strip()
+BYBIT_SECRET_KEY = os.getenv("BYBIT_SECRET_KEY", "").strip()
 
-OKX_API_KEY = _get("OKX_API_KEY")
-OKX_SECRET_KEY = _get("OKX_SECRET_KEY")
-OKX_PASSPHRASE = _get("OKX_PASSPHRASE")
-
-BYBIT_API_KEY = _get("BYBIT_API_KEY")
-BYBIT_SECRET_KEY = _get("BYBIT_SECRET_KEY")
+BITGET_API_KEY = os.getenv("BITGET_API_KEY", "").strip()
+BITGET_SECRET_KEY = os.getenv("BITGET_SECRET_KEY", "").strip()
+BITGET_PASSPHRASE = os.getenv("BITGET_PASSPHRASE", "").strip()
