@@ -439,23 +439,15 @@ const App = {
 
     async loadTrades() {
         const days = document.getElementById('daysSelect').value;
+        const direction = document.getElementById('directionSelect').value;
+        const pnl = document.getElementById('pnlSelect').value;
+        const leverage = document.getElementById('leverageSelect').value;
         const tradeList = document.getElementById('tradeList');
         tradeList.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
 
         try {
-            const data = await API.fetchTrades(days, this.currentSymbol, this.currentExchange);
-            let trades = data.trades;
-
-            // Apply client-side filters
-            const dir = document.getElementById('directionSelect').value;
-            const pnl = document.getElementById('pnlSelect').value;
-            const lev = document.getElementById('leverageSelect').value;
-            if (dir) trades = trades.filter(t => t.direction === dir);
-            if (pnl === 'win') trades = trades.filter(t => t.pnl > 0);
-            if (pnl === 'loss') trades = trades.filter(t => t.pnl <= 0);
-            if (lev) trades = trades.filter(t => (t.leverage || 0) >= Number(lev));
-
-            Trades.allTrades = trades;
+            const data = await API.fetchTrades(days, this.currentSymbol, this.currentExchange, direction, pnl, Number(leverage));
+            Trades.allTrades = data.trades;
             Trades.renderStats(Trades.allTrades);
             Trades.renderList(Trades.allTrades);
 

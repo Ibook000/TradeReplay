@@ -97,6 +97,9 @@ async def get_trades(
     days: int = Query(default=30, ge=1, le=365),
     symbol: str = Query(default="", description="Filter by symbol"),
     exchange: str = Query(default="", description="Filter by exchange (OKX, Bybit, Bitget)"),
+    direction: str = Query(default="", description="Filter by direction (long/short)"),
+    pnl: str = Query(default="", description="Filter by PnL (win/loss)"),
+    leverage: int = Query(default=0, ge=0, description="Min leverage filter"),
 ):
     trades = get_cached(days)
     if symbol:
@@ -105,6 +108,14 @@ async def get_trades(
     if exchange:
         exchange = exchange.capitalize()
         trades = [t for t in trades if t.get("exchange", "").capitalize() == exchange]
+    if direction:
+        trades = [t for t in trades if t.get("direction") == direction]
+    if pnl == "win":
+        trades = [t for t in trades if t.get("pnl", 0) > 0]
+    elif pnl == "loss":
+        trades = [t for t in trades if t.get("pnl", 0) <= 0]
+    if leverage > 0:
+        trades = [t for t in trades if (t.get("leverage") or 0) >= leverage]
     return {"trades": trades, "count": len(trades)}
 
 

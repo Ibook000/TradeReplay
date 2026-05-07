@@ -19,10 +19,13 @@ const API = {
      * @param {string} exchange - e.g. 'OKX', 'Bybit', '' for all
      * @returns {Promise<{trades: Array, count: number}>}
      */
-    async fetchTrades(days, symbol = '', exchange = '') {
+    async fetchTrades(days, symbol = '', exchange = '', direction = '', pnl = '', leverage = 0) {
         let url = `/api/trades?days=${days}`;
         if (symbol) url += `&symbol=${symbol}`;
         if (exchange) url += `&exchange=${exchange}`;
+        if (direction) url += `&direction=${direction}`;
+        if (pnl) url += `&pnl=${pnl}`;
+        if (leverage > 0) url += `&leverage=${leverage}`;
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         return resp.json();
