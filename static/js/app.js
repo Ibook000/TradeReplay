@@ -674,11 +674,32 @@ const App = {
             // Start from 20 candles before entry (or 0)
             this._idx = Math.max(0, this._entryIdx - 20);
 
+            // Pre-calculate full price range to fix Y-axis
+            let priceMin = Infinity, priceMax = -Infinity;
+            for (const k of this._klines) {
+                if (k.low < priceMin) priceMin = k.low;
+                if (k.high > priceMax) priceMax = k.high;
+            }
+            const pricePad = (priceMax - priceMin) * 0.05;
+            this._priceMin = priceMin - pricePad;
+            this._priceMax = priceMax + pricePad;
+
             // Set initial data (context before entry)
             const initData = this._klines.slice(0, this._idx + 1);
             KlineChart.setData(initData);
             KlineChart.clearMarkers();
             KlineChart.clearPriceLines();
+
+            // Pin price scale with invisible anchor lines
+            this._anchorLow = KlineChart.candleSeries.createPriceLine({
+                price: this._priceMin, color: 'transparent', lineWidth: 1,
+                lineStyle: 0, axisVisible: false, title: '',
+            });
+            this._anchorHigh = KlineChart.candleSeries.createPriceLine({
+                price: this._priceMax, color: 'transparent', lineWidth: 1,
+                lineStyle: 0, axisVisible: false, title: '',
+            });
+
             KlineChart.fitContent();
 
             // Show replay bar
@@ -716,6 +737,9 @@ const App = {
         stop() {
             this.pause();
             document.getElementById('replayBar').style.display = 'none';
+            // Remove anchor lines
+            if (this._anchorLow) { KlineChart.candleSeries.removePriceLine(this._anchorLow); this._anchorLow = null; }
+            if (this._anchorHigh) { KlineChart.candleSeries.removePriceLine(this._anchorHigh); this._anchorHigh = null; }
             this._klines = [];
             this._trade = null;
         },
