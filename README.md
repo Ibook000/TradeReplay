@@ -1,4 +1,4 @@
-# TradeReplay
+# TRADE REPLAY
 
 Multi-exchange contract trade replay tool — visualize your closed positions on K-line charts with entry/exit markers.
 
@@ -22,7 +22,7 @@ Multi-exchange contract trade replay tool — visualize your closed positions on
 
 ## Features
 
-- Multi-exchange support (OKX, Bybit) with unified data format
+- Multi-exchange support (OKX, Bybit, Bitget) with unified data format
 - K-line chart with entry/exit markers (LightweightCharts)
 - Price-based entry detection, timestamp-based exit alignment
 - Auto fallback across K-line sources (Binance → OKX → Bybit)
@@ -90,16 +90,16 @@ cp .env.example .env
 
 Edit `.env`:
 ```
-OKX_API_KEY=your_key
-OKX_SECRET_KEY=your_secret
+OKX_API_KEY=***
+OKX_SECRET_KEY=***
 OKX_PASSPHRASE=your_passphrase
-BYBIT_API_KEY=your_key
-BYBIT_SECRET_KEY=your_secret
-BITGET_API_KEY=your_key
-BITGET_SECRET_KEY=your_secret
+BYBIT_API_KEY=***
+BYBIT_SECRET_KEY=***
+BITGET_API_KEY=***
+BITGET_SECRET_KEY=***
 BITGET_PASSPHRASE=your_passphrase
 AI_BASE_URL=https://api.deepseek.com/v1
-AI_API_KEY=your_ai_key
+AI_API_KEY=***
 AI_MODEL=deepseek-chat
 ```
 
@@ -116,9 +116,9 @@ Open `http://your-server-ip:80` in browser.
 ### 6. Run as Systemd Service (Recommended)
 
 ```bash
-sudo tee /etc/systemd/system/tradereplay.service <<'EOF'
+sudo tee /etc/systemd/system/trade-replay.service <<'EOF'
 [Unit]
-Description=TradeReplay
+Description=Trade Replay - Multi-exchange trade history viewer
 After=postgresql.service
 
 [Service]
@@ -129,18 +129,19 @@ Environment=PORT=80
 ExecStart=/usr/bin/python3 main.py
 Restart=always
 RestartSec=5
+Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl start tradereplay
-sudo systemctl enable tradereplay
+sudo systemctl start trade-replay
+sudo systemctl enable trade-replay
 
 # Check status
-sudo systemctl status tradereplay
-sudo journalctl -u tradereplay -f
+sudo systemctl status trade-replay
+sudo journalctl -u trade-replay -f
 ```
 
 ### 7. Update
@@ -148,7 +149,7 @@ sudo journalctl -u tradereplay -f
 ```bash
 cd TradeReplay
 git pull
-sudo systemctl restart tradereplay
+sudo systemctl restart trade-replay
 ```
 
 ## Database Connection
@@ -165,7 +166,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=tradereplay
 DB_USER=tradereplay
-DB_PASSWORD=your_password
+DB_PASSWORD=***
 ```
 
 ## API Keys Setup
@@ -174,6 +175,7 @@ DB_PASSWORD=your_password
 |----------|-------------|-------|
 | OKX | API Key, Secret Key, Passphrase | Read-only permission sufficient |
 | Bybit | API Key, Secret Key | Read-only permission sufficient |
+| Bitget | API Key, Secret Key, Passphrase | Read-only permission sufficient |
 | AI | API Key | Optional, for AI Trading Coach |
 
 ## Project Structure
@@ -184,6 +186,7 @@ TradeReplay/
 ├── database.py          # PostgreSQL operations
 ├── cache.py             # Trade cache + daily refresh scheduler
 ├── klines.py            # K-line fetchers (Binance, OKX, Bybit)
+├── generate_history.py  # Historical data import
 ├── schema.sql           # Database schema
 ├── .env.example         # Environment template
 ├── requirements.txt     # Python dependencies
@@ -191,9 +194,11 @@ TradeReplay/
 │   ├── __init__.py      # Unified trade fetching
 │   ├── okx.py           # OKX adapter
 │   ├── bybit.py         # Bybit adapter
+│   ├── bitget.py        # Bitget adapter
 │   └── keys.py.example  # Env var reference
 └── static/
     ├── index.html       # SPA frontend
+    ├── logo.png         # App icon
     ├── css/style.css    # Dark theme + mobile
     └── js/
         ├── app.js       # Main logic

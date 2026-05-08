@@ -30,9 +30,10 @@ const App = {
             this.currentExchange = document.getElementById('exchangeSelect').value;
             this.loadTrades();
         });
-        document.getElementById('directionSelect').addEventListener('change', () => this.loadTrades());
-        document.getElementById('pnlSelect').addEventListener('change', () => this.loadTrades());
-        document.getElementById('leverageSelect').addEventListener('change', () => this.loadTrades());
+        document.getElementById('directionSelect').addEventListener('change', () => { this._updateFilterUI(); this.loadTrades(); });
+        document.getElementById('pnlSelect').addEventListener('change', () => { this._updateFilterUI(); this.loadTrades(); });
+        document.getElementById('leverageSelect').addEventListener('change', () => { this._updateFilterUI(); this.loadTrades(); });
+        document.getElementById('clearFiltersBtn').addEventListener('click', () => this._clearFilters());
         document.getElementById('statsBtn').addEventListener('click', () => this.togglePanel('statsPanel'));
         document.getElementById('closeStatsBtn').addEventListener('click', () => this.closePanel('statsPanel'));
         document.getElementById('aiAnalyzeBtn').addEventListener('click', () => this.runAiAnalysis());
@@ -639,6 +640,26 @@ const App = {
         }
 
         return html || escapeHtml(JSON.stringify(d));
+    },
+
+    _updateFilterUI() {
+        const pills = ['directionSelect', 'pnlSelect', 'leverageSelect'];
+        let hasActive = false;
+        pills.forEach(id => {
+            const el = document.getElementById(id);
+            const isActive = el.value !== '';
+            el.classList.toggle('active', isActive);
+            if (isActive) hasActive = true;
+        });
+        document.getElementById('clearFiltersBtn').classList.toggle('hidden', !hasActive);
+    },
+
+    _clearFilters() {
+        document.getElementById('directionSelect').value = '';
+        document.getElementById('pnlSelect').value = '';
+        document.getElementById('leverageSelect').value = '';
+        this._updateFilterUI();
+        this.loadTrades();
     },
 
     // ─── Replay ─────────────────────────────────────────────────────────
