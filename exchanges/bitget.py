@@ -157,3 +157,56 @@ async def fetch_bitget_trades(days: int = 30) -> list[dict]:
         })
 
     return trades
+
+
+# ─── Fetch Current Positions ─────────────────────────────────────────────
+async def fetch_bitget_positions() -> list[dict]:
+    """Fetch current open positions from Bitget."""
+    if not _is_configured():
+        return []
+
+    path = "/api/v2/mix/position/all-position"
+    params = "productType=USDT-FUTURES"
+    full_path = f"{path}?{params}"
+    headers = _headers("GET", full_path)
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{BASE_URL}{full_path}", headers=headers, timeout=15)
+            data = resp.json()
+
+        if data.get("code") != "00000":
+            print(f"[Bitget] Positions error: {data.get('msg', 'Unknown')}")
+            return []
+
+        positions = []
+        for p in data.get("data", []):
+            size = float(p.get("total", "0") or "0")
+            if size == 0:
+                continue
+
+            direction = p.get("holdSide", "")  # "long" or "short"
+            entry_price = float(p.get("openPriceAvg", "0") or "0")
+            mark_price = float(p.get("markPrice", "0") or "0")
+            leverage = p.get("leverage", "1")
+            unrealized_pnl = float(p.get("unrealizedPL", "0") or "0")
+            margin = float(p.get("marginSize", "0") or "0")
+
+            positions.append({
+                "exchange": "Bitget",
+                "symbol": _extract_symbol(p.get("symbol", "")),
+                "direction": direction,
+                "size": size,
+                "leverage": str(leverage),
+                "entry_price": entry_price,
+                "mark_price": mark_price,
+                "unrealized_pnl": round(unrealized_pnl, 2),
+                "margin": round(margin, 2),
+                "liquidation_price": float(p.get("liquidationPrice", "0") or "0"),
+                "margin_mode": p.get("marginMode", "cross"),
+            })
+
+        return positions
+    except Exception as e:
+        print(f"[Bitget] Positions fetch failed: {e}")
+        return []

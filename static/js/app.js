@@ -15,6 +15,11 @@ const App = {
     currentSymbol: '',
     currentExchange: '',
     allSymbols: [],
+    currentView: 'history',  // 'history' or 'positions'
+    _positionPollTimer: null,
+    _positionData: [],
+    _activePositionIdx: -1,
+    _positionKlineTimer: null,
 
     async init() {
         KlineChart.init(document.getElementById('chart'));
@@ -41,6 +46,342 @@ const App = {
         document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
         document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closePanel('settingsPanel'));
         document.getElementById('closeReviewBtn').addEventListener('click', () => this.closePanel('reviewPanel'));
+    },
+
+    /**
+     * Switch between History and Positions views
+     */
+    switchView(view) {
+        this.currentView = view;
+        
+        // Update tab buttons
+        document.querySelectorAll('.view-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.view === view);
+        });
+        
+        // Show/hide history controls
+        const historyControls = document.getElementById('historyControls');
+        historyControls.style.display = view === 'history' ? 'block' : 'none';
+        
+        // Show/hide trade list vs positions list
+        const tradeList = document.getElementById('tradeList');
+        const positionsList = document.getElementById('positionsList');
+        
+        if (view === 'history') {
+            tradeList.style.display = 'block';
+            positionsList.style.display = 'none';
+            this._stopPositionPoll();
+            this._stopPositionKlineRefresh();
+        } else {
+            tradeList.style.display = 'none';
+            positionsList.style.display = 'block';
+            this.loadPositions();
+            this._startPositionPoll();
+        }
+    },
+
+    /**
+     * Start auto-polling positions every 10 seconds
+     */
+    _startPositionPoll() {
+        this._stopPositionPoll();
+        this._positionPollTimer = setInterval(() => {
+            if (this.currentView === 'positions') {
+                this.loadPositions(true);
+            }
+        }, 10000);
+    },
+
+    /**
+     * Stop position polling
+     */
+    _stopPositionPoll() {
+        if (this._positionPollTimer) {
+            clearInterval(this._positionPollTimer);
+            this._positionPollTimer = null;
+        }
+    },
+
+    /**
+     * Start auto-refreshing K-line for active position every 5 seconds
+     */
+    _startPositionKlineRefresh() {
+        this._stopPositionKlineRefresh();
+        this._positionKlineTimer = setInterval(() => {
+            if (this._activePositionIdx >= 0 && this._positionData[this._activePositionIdx]) {
+                this._refreshPositionKline(this._positionData[this._activePositionIdx]);
+            }
+        }, 5000);
+    },
+
+    /**
+     * Stop K-line auto-refresh
+     */
+    _stopPositionKlineRefresh() {
+        if (this._positionKlineTimer) {
+            clearInterval(this._positionKlineTimer);
+            this._positionKlineTimer = null;
+        }
+    },
+
+    /**
+     * Load current positions from all exchanges
+     */
+    async loadPositions(isPoll = false) {
+        const positionsList = document.getElementById('positionsList');
+        if (!isPoll) {
+            positionsList.innerHTML = '<div class="loading"><div class="spinner"></div>Loading positions...</div>';
+        }
+        
+        try {
+            const resp = await fetch('/api/positions');
+            const data = await resp.json();
+            const positions = data.positions || [];
+            this._positionData = positions;
+            
+            if (positions.length === 0) {
+                positionsList.innerHTML = '<div class="empty">No open positions</div>';
+                this._activePositionIdx = -1;
+                return;
+            }
+            
+            this.renderPositions(positions);
+        } catch (e) {
+            if (!isPoll) {
+                positionsList.innerHTML = `<div class="empty">Error: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+    },
+
+    /**
+     * Render position cards
+     */
+    renderPositions(positions) {
+        const positionsList = document.getElementById('positionsList');
+        const escape = typeof escapeHtml === 'function' ? escapeHtml : (value) => String(value ?? '');
+        
+        // Summary stats
+        const totalPnl = positions.reduce((s, p) => s + p.unrealized_pnl, 0);
+        const totalMargin = positions.reduce((s, p) => s + p.margin, 0);
+        
+        let html = `
+            <div class="positions-summary">
+                <div class="pos-stat">
+                    <div class="label">Unrealized PnL</div>
+                    <div class="value ${totalPnl >= 0 ? 'positive' : 'negative'}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)} USDT</div>
+                </div>
+                <div class="pos-stat">
+                    <div class="label">Total Margin</div>
+                    <div class="value">${totalMargin.toFixed(2)} USDT</div>
+                </div>
+                <div class="pos-stat">
+                    <div class="label">Positions</div>
+                    <div class="value">${positions.length}</div>
+                </div>
+            </div>
+        `;
+        
+        // Position cards
+        positions.forEach((p, i) => {
+            const isLong = p.direction === 'long';
+            const pnlClass = p.unrealized_pnl >= 0 ? 'positive' : 'negative';
+            const exClass = p.exchange === 'OKX' ? 'okx' : p.exchange === 'Bybit' ? 'bybit' : 'bitget';
+            const pnlPct = p.entry_price > 0 ? ((p.mark_price - p.entry_price) / p.entry_price * 100 * (isLong ? 1 : -1)) : 0;
+            const isActive = i === this._activePositionIdx;
+            
+            html += `
+                <div class="position-card ${isActive ? 'active' : ''}" data-pos-idx="${i}" onclick="App.selectPosition(${i})">
+                    <div class="pos-header">
+                        <span class="exchange ${exClass}">${escape(p.exchange)}</span>
+                        <span class="dir ${isLong ? 'long' : 'short'}">${isLong ? 'LONG' : 'SHORT'}</span>
+                        <span class="pos-symbol">${escape(p.symbol)}</span>
+                        <span class="pos-lev">${p.leverage}x</span>
+                    </div>
+                    <div class="pos-pnl ${pnlClass}">
+                        <span class="pnl-value">${p.unrealized_pnl >= 0 ? '+' : ''}${p.unrealized_pnl.toFixed(2)} USDT</span>
+                        <span class="pnl-pct">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</span>
+                    </div>
+                    <div class="pos-details">
+                        <div class="pos-detail">
+                            <span class="label">Entry</span>
+                            <span class="val">${fmtPrice(p.entry_price)}</span>
+                        </div>
+                        <div class="pos-detail">
+                            <span class="label">Mark</span>
+                            <span class="val">${fmtPrice(p.mark_price)}</span>
+                        </div>
+                        <div class="pos-detail">
+                            <span class="label">Size</span>
+                            <span class="val">${p.size}</span>
+                        </div>
+                        <div class="pos-detail">
+                            <span class="label">Margin</span>
+                            <span class="val">${p.margin.toFixed(2)}</span>
+                        </div>
+                        ${p.liquidation_price > 0 ? `
+                        <div class="pos-detail liq-price">
+                            <span class="label">Liq Price</span>
+                            <span class="val">${fmtPrice(p.liquidation_price)}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        positionsList.innerHTML = html;
+        // Re-highlight active card
+        if (this._activePositionIdx >= 0) {
+            const activeCard = positionsList.querySelector(`.position-card[data-pos-idx="${this._activePositionIdx}"]`);
+            if (activeCard) activeCard.classList.add('active');
+        }
+    },
+
+    /**
+     * Select a position to view its K-line chart
+     */
+    async selectPosition(idx) {
+        const p = this._positionData[idx];
+        if (!p) return;
+
+        this._activePositionIdx = idx;
+
+        // Highlight card
+        document.querySelectorAll('.position-card').forEach(c => c.classList.remove('active'));
+        const card = document.querySelector(`.position-card[data-pos-idx="${idx}"]`);
+        if (card) card.classList.add('active');
+
+        // Update header
+        const isLong = p.direction === 'long';
+        const color = p.unrealized_pnl >= 0 ? '#00c853' : '#ff3d3d';
+        document.getElementById('chartHeader').innerHTML = `
+            <span class="info">
+                <span class="exchange ${p.exchange === 'OKX' ? 'okx' : p.exchange === 'Bybit' ? 'bybit' : 'bitget'}" style="font-size:10px;padding:2px 6px;border-radius:3px;margin-right:6px;">${escapeHtml(p.exchange)}</span>
+                <strong>${escapeHtml(p.symbol)}</strong>
+                <span class="dir ${isLong ? 'long' : 'short'}" style="font-size:10px;padding:2px 6px;border-radius:3px;margin:0 6px;">${isLong ? 'LONG' : 'SHORT'}</span>
+                ${p.leverage}x |
+                Entry <strong>${fmtPrice(p.entry_price)}</strong> |
+                Mark <strong>${fmtPrice(p.mark_price)}</strong>
+            </span>
+            <span style="display:flex;align-items:center;gap:8px;">
+                <span class="info" style="font-weight:600;font-size:12px;color:${color};">${p.unrealized_pnl >= 0 ? '+' : ''}${p.unrealized_pnl.toFixed(2)} USDT</span>
+                <span style="font-size:10px;color:#5a5a6e;">LIVE</span>
+                <button class="back-btn" onclick="App.backFromPosition()">&larr; Overview</button>
+            </span>
+        `;
+
+        // Load K-line chart
+        await this._loadPositionKline(p);
+        this._startPositionKlineRefresh();
+    },
+
+    /**
+     * Fetch and render K-line for a position (last 24h, 5m interval)
+     */
+    async _loadPositionKline(p) {
+        const now = Date.now();
+        const startMs = now - 24 * 3600 * 1000;
+        const symbol = p.symbol.replace(/[-\/]/g, '').replace(/USDT$/, '').replace(/USD$/, '');
+
+        try {
+            const data = await API.fetchKlines(startMs, now, '5m', symbol, p.exchange);
+            if (!data.klines || data.klines.length === 0) return;
+
+            KlineChart.setDataAdaptive(data.klines);
+            KlineChart.clearMarkers();
+            KlineChart.clearPriceLines();
+
+            // Entry price line
+            KlineChart.addPriceLine({
+                price: p.entry_price,
+                color: p.direction === 'long' ? '#00e676' : '#ff5252',
+                lineWidth: 1,
+                lineStyle: 2,
+                axisLabelVisible: true,
+                title: `Entry ${fmtPrice(p.entry_price)}`
+            });
+
+            // Mark price line
+            KlineChart.addPriceLine({
+                price: p.mark_price,
+                color: '#5e6ad2',
+                lineWidth: 1,
+                lineStyle: 0,
+                axisLabelVisible: true,
+                title: `Mark ${fmtPrice(p.mark_price)}`
+            });
+
+            // Liquidation price line
+            if (p.liquidation_price > 0) {
+                KlineChart.addPriceLine({
+                    price: p.liquidation_price,
+                    color: '#ff3d3d',
+                    lineWidth: 1,
+                    lineStyle: 1,
+                    axisLabelVisible: true,
+                    title: `Liq ${fmtPrice(p.liquidation_price)}`
+                });
+            }
+
+        } catch (e) {
+            console.error('Failed to load position kline:', e);
+        }
+    },
+
+    /**
+     * Refresh K-line data for the active position (called by polling timer)
+     */
+    async _refreshPositionKline(p) {
+        const now = Date.now();
+        const startMs = now - 24 * 3600 * 1000;
+        const symbol = p.symbol.replace(/[-\/]/g, '').replace(/USDT$/, '').replace(/USD$/, '');
+
+        try {
+            const data = await API.fetchKlines(startMs, now, '5m', symbol, p.exchange);
+            if (!data.klines || data.klines.length === 0) return;
+
+            KlineChart.setData(data.klines);
+
+            // Update price lines
+            KlineChart.clearPriceLines();
+            KlineChart.addPriceLine({
+                price: p.entry_price,
+                color: p.direction === 'long' ? '#00e676' : '#ff5252',
+                lineWidth: 1,
+                lineStyle: 2,
+                axisLabelVisible: true,
+                title: `Entry ${fmtPrice(p.entry_price)}`
+            });
+            KlineChart.addPriceLine({
+                price: p.mark_price,
+                color: '#5e6ad2',
+                lineWidth: 1,
+                lineStyle: 0,
+                axisLabelVisible: true,
+                title: `Mark ${fmtPrice(p.mark_price)}`
+            });
+            if (p.liquidation_price > 0) {
+                KlineChart.addPriceLine({
+                    price: p.liquidation_price,
+                    color: '#ff3d3d',
+                    lineWidth: 1,
+                    lineStyle: 1,
+                    axisLabelVisible: true,
+                    title: `Liq ${fmtPrice(p.liquidation_price)}`
+                });
+            }
+        } catch (e) {
+            // Silent fail on poll refresh
+        }
+    },
+
+    /**
+     * Go back from position view to history overview
+     */
+    backFromPosition() {
+        this._activePositionIdx = -1;
+        this._stopPositionKlineRefresh();
+        this.switchView('history');
     },
 
     togglePanel(id) {

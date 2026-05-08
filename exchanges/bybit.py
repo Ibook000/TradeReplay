@@ -152,3 +152,50 @@ async def fetch_bybit_trades(days: int = 30) -> list[dict]:
         })
 
     return trades
+
+
+# ─── Fetch Current Positions ─────────────────────────────────────────────
+async def fetch_bybit_positions() -> list[dict]:
+    """Fetch current open positions from Bybit."""
+    if not _is_configured():
+        return []
+
+    path = "/v5/position/list"
+    params = "category=linear&settleCoin=USDT"
+    url = f"{BASE_URL}{path}?{params}"
+    headers = _headers(params)
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=headers, timeout=15)
+            data = resp.json()
+
+        if data.get("retCode") != 0:
+            print(f"[Bybit] Positions error: {data.get('retMsg', 'Unknown')}")
+            return []
+
+        positions = []
+        for p in data.get("result", {}).get("list", []):
+            size = float(p.get("size", "0") or "0")
+            if size == 0:
+                continue
+
+            direction = "long" if p.get("side") == "Buy" else "short"
+            positions.append({
+                "exchange": "Bybit",
+                "symbol": _extract_symbol(p.get("symbol", "")),
+                "direction": direction,
+                "size": size,
+                "leverage": p.get("leverage", "1"),
+                "entry_price": float(p.get("avgPrice", "0") or "0"),
+                "mark_price": float(p.get("markPrice", "0") or "0"),
+                "unrealized_pnl": round(float(p.get("unrealisedPnl", "0") or "0"), 2),
+                "margin": round(float(p.get("positionMargin", "0") or "0"), 2),
+                "liquidation_price": float(p.get("liqPrice", "0") or "0"),
+                "margin_mode": p.get("marginMode", "cross"),
+            })
+
+        return positions
+    except Exception as e:
+        print(f"[Bybit] Positions fetch failed: {e}")
+        return []

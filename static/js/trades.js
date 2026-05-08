@@ -491,6 +491,7 @@ const Trades = {
 
             return `<div class="trade-card" data-idx="${i}" onclick="App.selectTrade(${i})">
                 <div class="top">
+                    <span class="trade-num">#${i + 1}</span>
                     <span class="exchange ${exClass}">${exchange}</span>
                     <span class="dir ${isLong ? 'long' : 'short'}">${isLong ? 'LONG' : 'SHORT'}</span>
                     <span class="pnl ${pnlClass}">${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)} USDT</span>

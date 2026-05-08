@@ -8,81 +8,105 @@
     <title>Trade Replay</title>
     <script src="/static/js/lightweight-charts.standalone.production.js"></script>
     <script src="/static/js/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=17">
+    <link rel="stylesheet" href="/static/css/style.css?v=23">
 </head>
 <body>
     <div class="app">
         <div class="sidebar" id="sidebar">
-            <div class="header">
-                <div class="header-brand">
-                    <img src="/static/logo.png" class="brand-logo" alt="logo">
-                    <div class="brand-info">
-                        <span class="brand-name">TRADE REPLAY</span>
-                        <span class="brand-sub">Multi-Exchange Review</span>
+            <div class="sidebar-content">
+                <!-- Brand Header -->
+                <div class="header">
+                    <div class="header-brand">
+                        <img src="/static/logo.png" class="brand-logo" alt="logo">
+                        <div class="brand-info">
+                            <span class="brand-name">TRADE REPLAY</span>
+                            <span class="brand-sub">Multi-Exchange Review</span>
+                        </div>
+                        <span class="header-badge" id="totalBadge">--</span>
                     </div>
-                    <span class="header-badge" id="totalBadge">--</span>
-                </div>
-                <div class="ticker-row">
-                    <select id="symbolSelect" class="ticker-select">
-                        <option>Loading...</option>
-                    </select>
-                </div>
-                <div class="filter-bar">
-                    <select id="exchangeSelect" class="f-select">
-                        <option value="">EXCHANGE</option>
-                        <option value="OKX">OKX</option>
-                        <option value="Bybit">Bybit</option>
-                        <option value="Bitget">Bitget</option>
-                    </select>
-                    <select id="daysSelect" class="f-select">
-                        <option value="7">7D</option>
-                        <option value="14">14D</option>
-                        <option value="30" selected>30D</option>
-                        <option value="60">60D</option>
-                        <option value="90">90D</option>
-                        <option value="180">180D</option>
-                        <option value="365">1Y</option>
-                    </select>
-                </div>
-                <div class="filter-bar filter-pills">
-                    <select id="directionSelect" class="f-pill">
-                        <option value="">DIR</option>
-                        <option value="long">LONG</option>
-                        <option value="short">SHORT</option>
-                    </select>
-                    <select id="pnlSelect" class="f-pill">
-                        <option value="">PNL</option>
-                        <option value="win">WIN</option>
-                        <option value="loss">LOSS</option>
-                    </select>
-                    <select id="leverageSelect" class="f-pill">
-                        <option value="">LEV</option>
-                        <option value="5">≥5x</option>
-                        <option value="10">≥10x</option>
-                        <option value="20">≥20x</option>
+
+                    <!-- View Toggle -->
+                    <div class="view-toggle">
+                        <button class="view-tab active" data-view="history" onclick="App.switchView('history')">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            History
+                        </button>
+                        <button class="view-tab" data-view="positions" onclick="App.switchView('positions')">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                            Positions
+                        </button>
+                    </div>
+
+                    <!-- History View (filters + controls) -->
+                    <div id="historyControls">
+                        <div class="ticker-row">
+                            <select id="symbolSelect" class="ticker-select">
+                                <option>Loading...</option>
+                            </select>
+                        </div>
+                        <div class="filter-bar">
+                            <select id="exchangeSelect" class="f-select">
+                                <option value="">EXCHANGE</option>
+                                <option value="OKX">OKX</option>
+                                <option value="Bybit">Bybit</option>
+                                <option value="Bitget">Bitget</option>
+                            </select>
+                            <select id="daysSelect" class="f-select">
+                                <option value="7">7D</option>
+                                <option value="14">14D</option>
+                                <option value="30" selected>30D</option>
+                                <option value="60">60D</option>
+                                <option value="90">90D</option>
+                                <option value="180">180D</option>
+                                <option value="365">1Y</option>
+                            </select>
+                        </div>
+                        <div class="filter-bar filter-pills">
+                            <select id="directionSelect" class="f-pill">
+                                <option value="">DIR</option>
+                                <option value="long">LONG</option>
+                                <option value="short">SHORT</option>
+                            </select>
+                            <select id="pnlSelect" class="f-pill">
+                                <option value="">PNL</option>
+                                <option value="win">WIN</option>
+                                <option value="loss">LOSS</option>
+                            </select>
+                            <select id="leverageSelect" class="f-pill">
+                                <option value="">LEV</option>
+                                <option value="5">≥5x</option>
+                                <option value="10">≥10x</option>
+                                <option value="20">≥20x</option>
                         <option value="50">≥50x</option>
                         <option value="100">≥100x</option>
                     </select>
                     <button class="f-clear" id="clearFiltersBtn" title="Clear">&times;</button>
+                        </div>
+                        <div class="controls">
+                            <button id="refreshBtn" class="ctrl-btn">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            </button>
+                            <button id="statsBtn" class="ctrl-btn">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                            </button>
+                            <button id="aiAnalyzeBtn" class="ctrl-btn ai">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                            </button>
+                            <button id="settingsBtn" class="ctrl-btn">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            </button>
+                        </div>
+                        <div class="stats" id="stats"></div>
+                    </div>
                 </div>
-                <div class="controls">
-                    <button id="refreshBtn" class="ctrl-btn">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                    </button>
-                    <button id="statsBtn" class="ctrl-btn">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
-                    </button>
-                    <button id="aiAnalyzeBtn" class="ctrl-btn ai">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-                    </button>
-                    <button id="settingsBtn" class="ctrl-btn">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    </button>
+
+                <!-- Trade List / Positions Container -->
+                <div class="trade-list" id="tradeList">
+                    <div class="loading"><div class="spinner"></div>Loading...</div>
                 </div>
-                <div class="stats" id="stats"></div>
-            </div>
-            <div class="trade-list" id="tradeList">
-                <div class="loading"><div class="spinner"></div>Loading...</div>
+                <div class="positions-list" id="positionsList" style="display:none;">
+                    <div class="loading"><div class="spinner"></div>Loading positions...</div>
+                </div>
             </div>
         </div>
 
@@ -131,7 +155,7 @@
                 <button class="close-btn" id="closeAiPanel">&times;</button>
             </div>
             <div class="panel-content" id="aiContent">
-                <div id="aiWeekHeader" style="font-size:10px;color:#5a5a6e;margin-bottom:12px;display:none;">
+                <div id="aiWeekHeader" style="font-size:11px;color:var(--text3);margin-bottom:12px;display:none;">
                     <span id="aiWeekLabel"></span>
                     <span id="aiWeekStats" style="margin-left:8px;"></span>
                 </div>
@@ -141,7 +165,7 @@
                 </div>
                 <div class="ai-result" id="aiResult" style="display: none;"></div>
                 <div id="aiHistorySection" style="margin-top:16px;display:none;">
-                    <div style="font-size:9px;color:#5a5a6e;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;border-top:1px solid #1e1e28;padding-top:12px;">Past Weeks</div>
+                    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;border-top:1px solid var(--border-light);padding-top:12px;">Past Weeks</div>
                     <div id="aiHistoryList"></div>
                 </div>
             </div>
@@ -383,10 +407,10 @@
         </div>
     </div>
 
-    <script src="/static/js/utils.js?v=16"></script>
-    <script src="/static/js/api.js?v=16"></script>
-    <script src="/static/js/chart.js?v=16"></script>
-    <script src="/static/js/trades.js?v=16"></script>
-    <script src="/static/js/app.js?v=16"></script>
+    <script src="/static/js/utils.js?v=23"></script>
+    <script src="/static/js/api.js?v=23"></script>
+    <script src="/static/js/chart.js?v=23"></script>
+    <script src="/static/js/trades.js?v=23"></script>
+    <script src="/static/js/app.js?v=23"></script>
 </body>
 </html>

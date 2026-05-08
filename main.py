@@ -92,6 +92,18 @@ async def get_symbols(days: int = Query(default=90, ge=1, le=365)):
     return {"symbols": symbols, "cached": get_store_count()}
 
 
+@app.get("/api/positions")
+async def get_positions():
+    """Fetch current open positions from all exchanges."""
+    from exchanges import get_all_positions
+    try:
+        positions = await get_all_positions()
+        return {"positions": positions}
+    except Exception as e:
+        print(f"[API] Positions error: {e}")
+        return {"positions": [], "error": str(e)}
+
+
 @app.get("/api/trades")
 async def get_trades(
     days: int = Query(default=30, ge=1, le=365),

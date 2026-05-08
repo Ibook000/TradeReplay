@@ -82,6 +82,42 @@ const KlineChart = {
         setTimeout(() => this.resize(), 50);
     },
 
+    /**
+     * Auto-adapt price precision based on price range, then setData + fitContent.
+     * Call this when switching symbols (e.g. BTC 80000 → DOGE 0.1).
+     */
+    setDataAdaptive(klines) {
+        if (!klines || klines.length === 0) return;
+
+        // Calculate price range
+        let minP = Infinity, maxP = -Infinity;
+        for (const k of klines) {
+            if (k.low < minP) minP = k.low;
+            if (k.high > maxP) maxP = k.high;
+        }
+        const range = maxP - minP;
+
+        // Auto-detect precision
+        let precision, minMove;
+        if (maxP >= 1000)       { precision = 2; minMove = 0.01; }
+        else if (maxP >= 100)   { precision = 3; minMove = 0.001; }
+        else if (maxP >= 10)    { precision = 4; minMove = 0.0001; }
+        else if (maxP >= 1)     { precision = 5; minMove = 0.00001; }
+        else if (maxP >= 0.1)   { precision = 6; minMove = 0.000001; }
+        else                    { precision = 7; minMove = 0.0000001; }
+
+        // Apply new price format
+        const fmt = { type: 'price', precision, minMove };
+        this.candleSeries.applyOptions({ priceFormat: fmt });
+
+        // Set data and fit
+        this.setData(klines);
+        setTimeout(() => {
+            this.instance.timeScale().fitContent();
+            this.resize();
+        }, 60);
+    },
+
     setMarkers(markers) {
         markers.sort((a, b) => a.time - b.time);
         // Force clear first to prevent any residual markers
@@ -138,7 +174,9 @@ const KlineChart = {
         const markers = [];
         const usedTimes = new Set();  // Track used times to avoid stacking
 
-        for (const t of trades) {
+        for (let idx = 0; idx < trades.length; idx++) {
+            const t = trades[idx];
+            const num = idx + 1;
             const closeSec = Math.floor(t.close_ms / 1000);
             const isLong = t.direction === 'long';
 
@@ -155,28 +193,29 @@ const KlineChart = {
 
             // Dedup: avoid stacking on same time as other markers
             if (usedTimes.has(entryTime)) {
-                const idx = klines.findIndex(k => k.time === entryTime);
-                if (idx > 0) entryTime = klines[idx - 1].time;
+                const i = klines.findIndex(k => k.time === entryTime);
+                if (i > 0) entryTime = klines[i - 1].time;
             }
             if (usedTimes.has(exitTime)) {
-                const idx = klines.findIndex(k => k.time === exitTime);
-                if (idx >= 0 && idx < klines.length - 1) exitTime = klines[idx + 1].time;
+                const i = klines.findIndex(k => k.time === exitTime);
+                if (i >= 0 && i < klines.length - 1) exitTime = klines[i + 1].time;
             }
             if (entryTime === exitTime && klines.length > 1) {
-                const idx = klines.findIndex(k => k.time === exitTime);
-                if (idx >= 0 && idx < klines.length - 1) exitTime = klines[idx + 1].time;
+                const i = klines.findIndex(k => k.time === exitTime);
+                if (i >= 0 && i < klines.length - 1) exitTime = klines[i + 1].time;
             }
 
             usedTimes.add(entryTime);
             usedTimes.add(exitTime);
 
+            const pnlSign = t.pnl >= 0 ? '+' : '';
             // 入场：多单下方↑，空单上方↓
             markers.push({
                 time: entryTime,
                 position: isLong ? 'belowBar' : 'aboveBar',
                 color: isLong ? '#00e676' : '#ff5252',
                 shape: isLong ? 'arrowUp' : 'arrowDown',
-                text: `${isLong ? 'L' : 'S'} ${t.leverage}x`,
+                text: `#${num} ${isLong ? 'L' : 'S'} ${t.leverage}x`,
             });
             // 出场：多单上方↓，空单下方↑
             markers.push({
@@ -184,7 +223,7 @@ const KlineChart = {
                 position: isLong ? 'aboveBar' : 'belowBar',
                 color: t.pnl >= 0 ? '#00e676' : '#ff5252',
                 shape: t.pnl >= 0 ? 'arrowUp' : 'arrowDown',
-                text: `${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(0)}`,
+                text: `#${num} ${pnlSign}${t.pnl.toFixed(0)}`,
             });
         }
         return markers;

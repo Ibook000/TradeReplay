@@ -4,9 +4,11 @@
  * Format price with adaptive decimal places
  */
 function fmtPrice(p) {
-    if (p >= 1000) return p.toFixed(1);
-    if (p >= 1) return p.toFixed(2);
-    return p.toFixed(4);
+    if (p >= 1000) return p.toFixed(2);
+    if (p >= 100) return p.toFixed(3);
+    if (p >= 1) return p.toFixed(4);
+    if (p >= 0.1) return p.toFixed(5);
+    return p.toFixed(6);
 }
 
 /**

@@ -133,3 +133,51 @@ async def fetch_okx_trades(days: int = 30) -> list[dict]:
         })
 
     return trades
+
+
+# ─── Fetch Current Positions ─────────────────────────────────────────────
+async def fetch_okx_positions() -> list[dict]:
+    """Fetch current open positions from OKX."""
+    if not _is_configured():
+        return []
+
+    path = "/api/v5/account/positions"
+    params = {"instType": "SWAP"}
+    query = "&".join(f"{k}={v}" for k, v in params.items())
+    url = f"{BASE_URL}{path}?{query}"
+    headers = _headers("GET", f"{path}?{query}")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=headers, timeout=15)
+            data = resp.json()
+
+        if data.get("code") != "0":
+            print(f"[OKX] Positions error: {data.get('msg', 'Unknown')}")
+            return []
+
+        positions = []
+        for p in data.get("data", []):
+            pos = float(p.get("pos", "0") or "0")
+            if pos == 0:
+                continue
+
+            direction = "long" if float(p.get("pos", "0") or "0") > 0 else "short"
+            positions.append({
+                "exchange": "OKX",
+                "symbol": _extract_symbol(p.get("instId", "")),
+                "direction": direction,
+                "size": abs(float(p.get("pos", "0") or "0")),
+                "leverage": p.get("lever", "1"),
+                "entry_price": float(p.get("avgPx", "0") or "0"),
+                "mark_price": float(p.get("markPx", "0") or "0"),
+                "unrealized_pnl": round(float(p.get("upl", "0") or "0"), 2),
+                "margin": round(float(p.get("margin", "0") or "0"), 2),
+                "liquidation_price": float(p.get("liqPx", "0") or "0"),
+                "margin_mode": p.get("mgnMode", "cross"),
+            })
+
+        return positions
+    except Exception as e:
+        print(f"[OKX] Positions fetch failed: {e}")
+        return []
