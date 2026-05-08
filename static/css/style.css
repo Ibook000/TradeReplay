@@ -458,6 +458,25 @@ body {
     color: var(--ink);
 }
 
+.view-settings {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    min-width: 32px;
+    background: transparent;
+    border: none;
+    border-radius: var(--r-sm);
+    color: var(--ink-tertiary);
+    cursor: pointer;
+    transition: all var(--t-fast);
+}
+
+.view-settings:hover {
+    color: var(--ink-subtle);
+    background: var(--surface-3);
+}
+
 /* ─── Positions Summary ──────────────────────────────────────────────────── */
 .positions-summary {
     display: grid;
