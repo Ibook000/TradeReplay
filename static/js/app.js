@@ -807,9 +807,8 @@ const App = {
 
     async loadOverview(days) {
         const data = await API.fetchKlinesRange(days, '1h', this.currentSymbol);
-        KlineChart.setData(data.klines);
+        KlineChart.setDataAdaptive(data.klines);
         KlineChart.setMarkers(KlineChart.buildOverviewMarkers(Trades.allTrades, data.klines));
-        KlineChart.fitContent();
         this.updateHeader(null);
     },
 
@@ -825,7 +824,7 @@ const App = {
         const endMs = t.close_ms + (noOpenTime ? 12 * 3600 * 1000 : padding);
         const data = await API.fetchKlines(startMs, endMs, '5m', t.symbol || this.currentSymbol, t.exchange || '');
 
-        KlineChart.setData(data.klines);
+        KlineChart.setDataAdaptive(data.klines);
         KlineChart.clearMarkers();
         KlineChart.setMarkers(KlineChart.buildTradeMarkers(t, data.klines));
 
