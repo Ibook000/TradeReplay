@@ -470,6 +470,133 @@ K线数据 (5分钟, UTC+8):
         raise HTTPException(status_code=502, detail=f"AI request failed: {e}")
 
 
+@app.post("/api/analyze_position")
+async def analyze_position(request: Request):
+    """AI analysis for an open position based on current K-line data."""
+    import re as _re
+    body = await request.json()
+    exchange = body.get("exchange", "")
+    symbol = body.get("symbol", "").replace("/", "-").upper()
+    direction = body.get("direction", "long")
+    leverage = body.get("leverage", 1)
+    entry_price = body.get("entry_price", 0)
+    mark_price = body.get("mark_price", 0)
+    size = body.get("size", 0)
+    margin = body.get("margin", 0)
+    liq_price = body.get("liquidation_price", 0)
+    unrealized_pnl = body.get("unrealized_pnl", 0)
+
+    if not symbol or not exchange:
+        raise HTTPException(status_code=400, detail="symbol and exchange required")
+
+    # Fetch recent K-lines (last 24h, 5m interval)
+    now_ms = int(time.time() * 1000)
+    start_ms = now_ms - 24 * 3600 * 1000
+    klines = await fetch_klines(symbol, "5m", start_ms, now_ms, exchange)
+
+    if not klines:
+        raise HTTPException(status_code=502, detail="Failed to fetch K-line data")
+
+    # Simplify K-lines for prompt
+    if len(klines) > 48:
+        step = len(klines) // 48
+        klines = klines[::step][:48]
+
+    kline_text = ""
+    for k in klines:
+        ts = k.get("time", 0)
+        from datetime import datetime, timezone, timedelta
+        dt = datetime.fromtimestamp(ts, tz=timezone(timedelta(hours=8)))
+        kline_text += f"  {dt.strftime('%m-%d %H:%M')} O:{k['open']:.4f} H:{k['high']:.4f} L:{k['low']:.4f} C:{k['close']:.4f}\n"
+
+    # Calculate PnL %
+    pnl_pct = 0
+    if entry_price > 0:
+        pnl_pct = (mark_price - entry_price) / entry_price * 100
+        if direction == "short":
+            pnl_pct = -pnl_pct
+
+    prompt = f"""分析以下当前持仓的行情，给出持仓建议。
+
+当前持仓信息:
+- 交易所: {exchange}
+- 币种: {symbol}
+- 方向: {direction.upper()} {leverage}x
+- 入场价: {entry_price:.4f}
+- 当前标记价: {mark_price:.4f}
+- 浮动盈亏: {unrealized_pnl:+.2f} USDT ({pnl_pct:+.2f}%)
+- 仓位大小: {size}
+- 保证金: {margin:.2f} USDT
+- 强平价: {liq_price:.4f}
+
+最近24小时K线数据 (5分钟, UTC+8):
+{kline_text}
+
+严格按以下JSON格式输出，不要输出任何其他内容:
+{{
+  "summary": "一句话行情判断，20字以内",
+  "score": 0到100的持仓健康度评分(100=非常健康),
+  "entry_analysis": "当前行情趋势分析，基于K线数据，50字以内",
+  "exit_analysis": "持仓风险评估，包含强平距离和趋势反转信号，50字以内",
+  "top_issues": [
+    {{"title": "风险点标题", "detail": "用K线数据说明具体风险", "severity": "high或medium或low"}}
+  ],
+  "action_items": [
+    {{"action": "具体持仓建议(加仓/减仓/止损/持有)", "priority": 1到5}}
+  ]
+}}
+
+要求:
+1. top_issues 最多3个
+2. action_items 最多3个，必须包含明确的操作建议
+3. 语气犀利直接，不要客套
+4. 引用具体K线价格数据
+5. 重点关注强平风险和趋势反转信号"""
+
+    api_key = os.getenv("AI_API_KEY", "").strip()
+    base_url = os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1").strip().rstrip("/")
+    model = os.getenv("AI_MODEL", "deepseek-chat").strip()
+
+    if not api_key:
+        raise HTTPException(status_code=500, detail="AI API key not configured")
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                f"{base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": "你是犀利的合约交易教练。必须严格输出合法JSON，不要输出任何其他文本、markdown或代码块标记。"},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 2000
+                }
+            )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"AI API error: {resp.status_code}")
+
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
+        # Strip markdown code block if present
+        if raw.startswith("```"):
+            raw = _re.sub(r'^```(?:json)?\s*', '', raw)
+            raw = _re.sub(r'\s*```$', '', raw)
+
+        # Validate JSON
+        try:
+            parsed = json.loads(raw)
+            review_text = json.dumps(parsed, ensure_ascii=False)
+        except json.JSONDecodeError:
+            review_text = raw
+
+        return {"found": True, "review": review_text}
+
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"AI request failed: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "80")))

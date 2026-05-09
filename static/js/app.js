@@ -266,6 +266,7 @@ const App = {
             <span style="display:flex;align-items:center;gap:8px;">
                 <span class="info" style="font-weight:600;font-size:12px;color:${color};">${p.unrealized_pnl >= 0 ? '+' : ''}${p.unrealized_pnl.toFixed(2)} USDT</span>
                 <span style="font-size:10px;color:#5a5a6e;">LIVE</span>
+                <button class="ai-review-btn" id="posAiBtn" onclick="App.analyzePosition()">AI</button>
                 <button class="back-btn" onclick="App.backFromPosition()">&larr; Overview</button>
             </span>
         `;
@@ -382,6 +383,56 @@ const App = {
         this._activePositionIdx = -1;
         this._stopPositionKlineRefresh();
         this.switchView('history');
+    },
+
+    /**
+     * Run AI analysis on the current position
+     */
+    async analyzePosition() {
+        const p = this._positionData[this._activePositionIdx];
+        if (!p) return;
+
+        const btn = document.getElementById('posAiBtn');
+        const content = document.getElementById('reviewContent');
+
+        // Open side-panel, close others
+        this.togglePanel('reviewPanel');
+        btn.disabled = true;
+        btn.textContent = '...';
+        content.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Analyzing position...</span></div>';
+
+        try {
+            const resp = await fetch('/api/analyze_position', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    exchange: p.exchange,
+                    symbol: p.symbol,
+                    direction: p.direction,
+                    leverage: p.leverage,
+                    entry_price: p.entry_price,
+                    mark_price: p.mark_price,
+                    size: p.size,
+                    margin: p.margin,
+                    liquidation_price: p.liquidation_price,
+                    unrealized_pnl: p.unrealized_pnl
+                })
+            });
+            const data = await resp.json();
+
+            if (data.found) {
+                content.innerHTML = this.formatTradeReview(data.review);
+                btn.textContent = 'Done';
+                btn.classList.add('done');
+            } else {
+                content.innerHTML = `<div class="highlight">Error: ${escapeHtml(data.detail || 'Unknown')}</div>`;
+                btn.textContent = 'Retry';
+            }
+        } catch (e) {
+            content.innerHTML = `<div class="highlight">Failed: ${escapeHtml(e.message)}</div>`;
+            btn.textContent = 'Retry';
+        }
+        btn.disabled = false;
     },
 
     togglePanel(id) {
