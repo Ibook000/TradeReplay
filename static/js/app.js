@@ -993,7 +993,6 @@ const App = {
         const leverage = escapeHtml(trade.leverage);
         el.innerHTML = `
             <span class="info">
-                <button class="back-btn" onclick="App.backToOverview()">&larr; Overview</button>
                 <strong>${symbol}</strong>
                 <span class="dir ${isLong ? 'long' : 'short'}">${direction}</span>
                 <span class="header-sep">${leverage}x</span>
@@ -1005,6 +1004,7 @@ const App = {
                 <span class="info ${cls}" style="font-weight:600;">${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}</span>
                 <button class="ai-review-btn" id="aiReviewBtn" onclick="App.runTradeReview()">AI Review</button>
                 <button class="replay-trigger" onclick="App.startReplay()">Replay</button>
+                <button class="back-btn" onclick="App.backToOverview()">&larr; Overview</button>
             </span>
         `;
         // Hide review panel when switching trades
