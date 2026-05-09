@@ -252,21 +252,22 @@ const App = {
         const card = document.querySelector(`.position-card[data-pos-idx="${idx}"]`);
         if (card) card.classList.add('active');
 
-        // Update header
+        // Update header — unified format
         const isLong = p.direction === 'long';
-        const color = p.unrealized_pnl >= 0 ? '#00c853' : '#ff3d3d';
+        const pnlCls = p.unrealized_pnl >= 0 ? 'positive' : 'negative';
+        const exCls = p.exchange === 'OKX' ? 'okx' : p.exchange === 'Bybit' ? 'bybit' : 'bitget';
         document.getElementById('chartHeader').innerHTML = `
             <span class="info">
-                <span class="exchange ${p.exchange === 'OKX' ? 'okx' : p.exchange === 'Bybit' ? 'bybit' : 'bitget'}" style="font-size:10px;padding:2px 6px;border-radius:3px;margin-right:6px;">${escapeHtml(p.exchange)}</span>
+                <span class="exchange ${exCls}">${escapeHtml(p.exchange)}</span>
                 <strong>${escapeHtml(p.symbol)}</strong>
-                <span class="dir ${isLong ? 'long' : 'short'}" style="font-size:10px;padding:2px 6px;border-radius:3px;margin:0 6px;">${isLong ? 'LONG' : 'SHORT'}</span>
-                ${p.leverage}x |
-                Entry <strong>${fmtPrice(p.entry_price)}</strong> |
-                Mark <strong>${fmtPrice(p.mark_price)}</strong>
+                <span class="dir ${isLong ? 'long' : 'short'}">${isLong ? 'LONG' : 'SHORT'}</span>
+                <span class="header-sep">${p.leverage}x</span>
+                <span class="header-sep">Entry <strong>${fmtPrice(p.entry_price)}</strong></span>
+                <span class="header-sep">Mark <strong>${fmtPrice(p.mark_price)}</strong></span>
             </span>
-            <span style="display:flex;align-items:center;gap:8px;">
-                <span class="info" style="font-weight:600;font-size:12px;color:${color};">${p.unrealized_pnl >= 0 ? '+' : ''}${p.unrealized_pnl.toFixed(2)} USDT</span>
-                <span style="font-size:10px;color:#5a5a6e;">LIVE</span>
+            <span class="header-right">
+                <span class="info ${pnlCls}" style="font-weight:600;">${p.unrealized_pnl >= 0 ? '+' : ''}${p.unrealized_pnl.toFixed(2)} USDT</span>
+                <span class="header-live">LIVE</span>
                 <button class="ai-review-btn" id="posAiBtn" onclick="App.analyzePosition()">AI</button>
                 <button class="back-btn" onclick="App.backFromPosition()">&larr; Overview</button>
             </span>
@@ -987,18 +988,21 @@ const App = {
         }
         const cls = trade.pnl >= 0 ? 'positive' : 'negative';
         const symbol = escapeHtml(trade.symbol || this.currentSymbol);
-        const direction = trade.direction === 'long' ? 'LONG' : 'SHORT';
+        const isLong = trade.direction === 'long';
+        const direction = isLong ? 'LONG' : 'SHORT';
         const leverage = escapeHtml(trade.leverage);
         el.innerHTML = `
             <span class="info">
                 <button class="back-btn" onclick="App.backToOverview()">&larr; Overview</button>
-                <strong>${symbol} ${direction} ${leverage}x</strong> |
-                Entry <strong>${fmtPrice(trade.open_price)}</strong> |
-                Exit <strong>${fmtPrice(trade.close_price)}</strong> |
-                Hold <strong>${trade.hold_hours.toFixed(1)}h</strong>
+                <strong>${symbol}</strong>
+                <span class="dir ${isLong ? 'long' : 'short'}">${direction}</span>
+                <span class="header-sep">${leverage}x</span>
+                <span class="header-sep">Entry <strong>${fmtPrice(trade.open_price)}</strong></span>
+                <span class="header-sep">Exit <strong>${fmtPrice(trade.close_price)}</strong></span>
+                <span class="header-sep">Hold <strong>${trade.hold_hours.toFixed(1)}h</strong></span>
             </span>
-            <span style="display:flex;align-items:center;gap:8px;">
-                <span class="info ${cls}" style="font-weight:600;font-size:12px">${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}</span>
+            <span class="header-right">
+                <span class="info ${cls}" style="font-weight:600;">${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}</span>
                 <button class="ai-review-btn" id="aiReviewBtn" onclick="App.runTradeReview()">AI Review</button>
                 <button class="replay-trigger" onclick="App.startReplay()">Replay</button>
             </span>
