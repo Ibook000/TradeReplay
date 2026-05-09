@@ -524,7 +524,7 @@ body {
 
 .position-card.active {
     background: var(--surface-3);
-    border-color: var(--accent);
+    border-color: var(--primary);
 }
 
 .pos-header {
