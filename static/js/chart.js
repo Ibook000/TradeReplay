@@ -221,8 +221,8 @@ const KlineChart = {
             markers.push({
                 time: exitTime,
                 position: isLong ? 'aboveBar' : 'belowBar',
-                color: t.pnl >= 0 ? '#00e676' : '#ff5252',
-                shape: t.pnl >= 0 ? 'arrowUp' : 'arrowDown',
+                color: isLong ? '#00e676' : '#ff5252',
+                shape: isLong ? 'arrowDown' : 'arrowUp',
                 text: `#${num} ${pnlSign}${t.pnl.toFixed(0)}`,
             });
         }
