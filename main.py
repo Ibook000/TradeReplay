@@ -226,9 +226,9 @@ async def update_config(request: Request):
         "BYBIT_API_KEY": _validate_config_value("bybit_api_key", body.get("bybit_api_key", "")),
         "BYBIT_SECRET_KEY": _validate_config_value("bybit_secret_key", body.get("bybit_secret_key", "")),
         # Bitget
-        "BITGET_API_KEY": body.get("bitget_api_key", ""),
-        "BITGET_SECRET_KEY": body.get("bitget_secret_key", ""),
-        "BITGET_PASSPHRASE": body.get("bitget_passphrase", ""),
+        "BITGET_API_KEY": _validate_config_value("bitget_api_key", body.get("bitget_api_key", "")),
+        "BITGET_SECRET_KEY": _validate_config_value("bitget_secret_key", body.get("bitget_secret_key", "")),
+        "BITGET_PASSPHRASE": _validate_config_value("bitget_passphrase", body.get("bitget_passphrase", "")),
         # AI
         "AI_BASE_URL": _normalize_ai_base_url(_validate_config_value("ai_base_url", body.get("ai_base_url", ""))),
         "AI_API_KEY": _validate_config_value("ai_api_key", body.get("ai_api_key", "")),

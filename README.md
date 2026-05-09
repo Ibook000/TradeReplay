@@ -8,13 +8,28 @@ TRADE REPLAY is a self-hosted, multi-exchange contract trade replay and review t
 ![Overview](screenshots/overview.png)
 
 ### Trade Detail — Entry/exit price lines on K-lines
-![Detail](screenshots/detail.png)
+![Detail](screenshots/trade-detail.png)
 
 ### Statistics — Equity curve, daily PnL, distribution
 ![Stats](screenshots/stats.png)
 
-### AI Analysis — AI Trading Coach
+### AI Analysis — Weekly AI Trading Coach
 ![AI Analysis](screenshots/ai-analysis.png)
+
+### AI Review — Single-trade AI analysis
+![AI Review](screenshots/ai-review.png)
+
+### Positions — Live open positions view
+![Positions](screenshots/positions.png)
+
+### Position Detail — Live position K-line with price lines
+![Position Detail](screenshots/position-detail.png)
+
+### Replay — Trade replay animation
+![Replay](screenshots/replay.png)
+
+### Settings — Exchange and AI configuration
+![Settings](screenshots/settings.png)
 
 ## Architecture
 
