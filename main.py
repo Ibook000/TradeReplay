@@ -536,22 +536,26 @@ async def analyze_position(request: Request):
 {{
   "summary": "一句话行情判断，20字以内",
   "score": 0到100的持仓健康度评分(100=非常健康),
-  "entry_analysis": "当前行情趋势分析，基于K线数据，50字以内",
-  "exit_analysis": "持仓风险评估，包含强平距离和趋势反转信号，50字以内",
-  "top_issues": [
-    {{"title": "风险点标题", "detail": "用K线数据说明具体风险", "severity": "high或medium或low"}}
+  "trend": [
+    "趋势分析点1，引用具体K线价格，30字以内",
+    "趋势分析点2，30字以内"
   ],
-  "action_items": [
-    {{"action": "具体持仓建议(加仓/减仓/止损/持有)", "priority": 1到5}}
+  "risks": [
+    {{"text": "风险描述，引用具体价格数据", "severity": "high或medium或low"}},
+    {{"text": "风险描述", "severity": "medium"}}
+  ],
+  "actions": [
+    {{"type": "hold或add或reduce或stoploss", "text": "具体操作建议，包含价格点位", "price": "建议价格或空字符串"}},
+    {{"type": "stoploss", "text": "止损建议", "price": "止损价格"}}
   ]
 }}
 
 要求:
-1. top_issues 最多3个
-2. action_items 最多3个，必须包含明确的操作建议
-3. 语气犀利直接，不要客套
-4. 引用具体K线价格数据
-5. 重点关注强平风险和趋势反转信号"""
+1. trend 2-3条，分析当前K线形态和趋势方向
+2. risks 最多3条，必须包含强平风险评估
+3. actions 2-3条，必须包含明确的操作建议和价格点位
+4. actions.type 只能是 hold/add/reduce/stoploss 四种
+5. 语气犀利直接，引用具体K线价格数据"""
 
     api_key = os.getenv("AI_API_KEY", "").strip()
     base_url = os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1").strip().rstrip("/")

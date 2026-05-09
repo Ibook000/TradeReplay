@@ -903,6 +903,122 @@ body {
 .settings-panel.open { width: 420px; }
 .review-panel.open { width: 420px; }
 
+/* ─── Position Analysis Panel ────────────────────────────────────────────── */
+.pos-analysis-panel.open { width: 380px; }
+
+.pa-section {
+    margin-bottom: var(--sp-4);
+}
+
+.pa-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-3);
+    padding: var(--sp-3);
+    background: var(--surface-2);
+    border-radius: var(--r-md);
+    border: 1px solid var(--hairline);
+}
+
+.pa-score {
+    font-size: 36px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    line-height: 1;
+}
+
+.pa-score.healthy { color: var(--green); }
+.pa-score.warning { color: #fbbf24; }
+.pa-score.danger { color: var(--red); }
+
+.pa-summary {
+    flex: 1;
+}
+
+.pa-summary-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 2px;
+}
+
+.pa-summary-sub {
+    font-size: 10px;
+    color: var(--ink-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pa-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: var(--sp-2);
+    padding-bottom: var(--sp-1);
+    border-bottom: 1px solid var(--hairline);
+}
+
+.pa-label.trend { color: var(--accent); }
+.pa-label.risk { color: var(--red); }
+.pa-label.action { color: var(--green); }
+
+.pa-item {
+    padding: var(--sp-2);
+    margin-bottom: var(--sp-2);
+    border-radius: var(--r-sm);
+    font-size: 11px;
+    color: var(--ink-subtle);
+    line-height: 1.6;
+}
+
+.pa-item.trend {
+    background: rgba(94, 106, 210, 0.06);
+    border-left: 3px solid var(--accent);
+}
+
+.pa-item.risk {
+    background: rgba(255, 61, 61, 0.06);
+    border-left: 3px solid var(--red);
+}
+
+.pa-item.risk.medium {
+    border-left-color: #fbbf24;
+    background: rgba(251, 191, 36, 0.06);
+}
+
+.pa-item.risk.low {
+    border-left-color: var(--ink-tertiary);
+    background: var(--surface-2);
+}
+
+.pa-item.action {
+    background: rgba(0, 200, 83, 0.06);
+    border-left: 3px solid var(--green);
+}
+
+.pa-action-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 2px;
+    margin-right: var(--sp-1);
+    text-transform: uppercase;
+}
+
+.pa-action-badge.add { background: rgba(0, 200, 83, 0.15); color: var(--green); }
+.pa-action-badge.reduce { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.pa-action-badge.stoploss { background: rgba(255, 61, 61, 0.15); color: var(--red); }
+.pa-action-badge.hold { background: rgba(94, 106, 210, 0.15); color: var(--accent); }
+
+.pa-price {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--ink);
+}
+
 .panel-header {
     display: flex;
     justify-content: space-between;

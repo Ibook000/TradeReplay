@@ -46,6 +46,7 @@ const App = {
         document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
         document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closePanel('settingsPanel'));
         document.getElementById('closeReviewBtn').addEventListener('click', () => this.closePanel('reviewPanel'));
+        document.getElementById('closePosAnalysisBtn').addEventListener('click', () => this.closePanel('posAnalysisPanel'));
     },
 
     /**
@@ -393,10 +394,10 @@ const App = {
         if (!p) return;
 
         const btn = document.getElementById('posAiBtn');
-        const content = document.getElementById('reviewContent');
+        const content = document.getElementById('posAnalysisContent');
 
-        // Open side-panel, close others
-        this.togglePanel('reviewPanel');
+        // Open dedicated panel
+        this.openPosAnalysis();
         btn.disabled = true;
         btn.textContent = '...';
         content.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Analyzing position...</span></div>';
@@ -421,7 +422,7 @@ const App = {
             const data = await resp.json();
 
             if (data.found) {
-                content.innerHTML = this.formatTradeReview(data.review);
+                content.innerHTML = this.renderPositionAnalysis(data.review, p);
                 btn.textContent = 'Done';
                 btn.classList.add('done');
             } else {
@@ -433,6 +434,89 @@ const App = {
             btn.textContent = 'Retry';
         }
         btn.disabled = false;
+    },
+
+    /**
+     * Open position analysis panel
+     */
+    openPosAnalysis() {
+        document.querySelectorAll('.side-panel.open').forEach(p => {
+            if (p.id !== 'posAnalysisPanel') p.classList.remove('open');
+        });
+        document.getElementById('posAnalysisPanel').classList.add('open');
+        setTimeout(() => KlineChart.resize(), 50);
+    },
+
+    /**
+     * Render position analysis result
+     */
+    renderPositionAnalysis(text, position) {
+        let d;
+        try {
+            d = typeof text === 'string' ? JSON.parse(text) : text;
+        } catch (e) {
+            return `<div style="font-size:11px;color:#e1e1e6;line-height:1.6;white-space:pre-wrap;">${escapeHtml(String(text))}</div>`;
+        }
+
+        const escape = escapeHtml;
+        const score = Number(d.score) || 0;
+        const scoreClass = score >= 70 ? 'healthy' : score >= 40 ? 'warning' : 'danger';
+        const fmtP = fmtPrice;
+
+        let html = '';
+
+        // Header with score
+        html += `
+            <div class="pa-header">
+                <div class="pa-score ${scoreClass}">${score}</div>
+                <div class="pa-summary">
+                    <div class="pa-summary-title">${escape(d.summary || '--')}</div>
+                    <div class="pa-summary-sub">${escape(position.exchange)} ${escape(position.symbol)} ${position.direction?.toUpperCase()} ${position.leverage}x</div>
+                </div>
+            </div>
+        `;
+
+        // Trend Analysis
+        if (d.trend?.length) {
+            html += `<div class="pa-section">`;
+            html += `<div class="pa-label trend">Trend Analysis</div>`;
+            for (const t of d.trend) {
+                html += `<div class="pa-item trend">${escape(t)}</div>`;
+            }
+            html += `</div>`;
+        }
+
+        // Risk Assessment
+        if (d.risks?.length) {
+            html += `<div class="pa-section">`;
+            html += `<div class="pa-label risk">Risk Assessment</div>`;
+            for (const r of d.risks) {
+                const sev = r.severity || 'medium';
+                html += `<div class="pa-item risk ${sev}">${escape(r.text || r)}</div>`;
+            }
+            html += `</div>`;
+        }
+
+        // Action Recommendations
+        if (d.actions?.length) {
+            html += `<div class="pa-section">`;
+            html += `<div class="pa-label action">Recommendations</div>`;
+            for (const a of d.actions) {
+                const type = a.type || 'hold';
+                const typeLabel = { hold: 'HOLD', add: 'ADD', reduce: 'REDUCE', stoploss: 'STOP' }[type] || type.toUpperCase();
+                const priceHtml = a.price ? `<span class="pa-price">${escape(a.price)}</span>` : '';
+                html += `
+                    <div class="pa-item action">
+                        <span class="pa-action-badge ${type}">${typeLabel}</span>
+                        ${escape(a.text || a.action || '')}
+                        ${priceHtml ? '<br><span style="margin-left:4px;">' + priceHtml + '</span>' : ''}
+                    </div>
+                `;
+            }
+            html += `</div>`;
+        }
+
+        return html;
     },
 
     togglePanel(id) {
