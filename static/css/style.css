@@ -400,18 +400,6 @@ body {
     border-color: var(--primary);
 }
 
-.trade-card .top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.trade-card .left-tags {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-1);
-}
-
 .trade-num {
     font-size: 10px;
     font-weight: 600;
@@ -658,22 +646,6 @@ body {
 
 .pnl.positive { color: var(--green); }
 .pnl.negative { color: var(--red); }
-
-.trade-card .details {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2px var(--sp-2);
-    margin-top: var(--sp-2);
-    font-size: 12px;
-    color: var(--ink-tertiary);
-}
-
-.trade-card .details .val {
-    color: var(--ink-subtle);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: -0.1px;
-}
 
 /* ─── Main Chart ─────────────────────────────────────────────────────────── */
 .main {
@@ -1523,6 +1495,4 @@ body {
         width: 100% !important;
         transform: translateX(0);
     }
-    .trade-card .details { font-size: 11px; }
-    .trade-card .details .val { font-size: 10px; }
 }

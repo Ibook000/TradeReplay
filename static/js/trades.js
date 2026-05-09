@@ -488,21 +488,40 @@ const Trades = {
             const exClass = t.exchange === 'OKX' ? 'okx' : t.exchange === 'Bybit' ? 'bybit' : 'bitget';
             const exchange = escape(t.exchange);
             const leverage = escape(t.leverage);
+            const symbol = escape(t.symbol || App.currentSymbol);
 
             return `<div class="trade-card" data-idx="${i}" onclick="App.selectTrade(${i})">
-                <div class="top">
+                <div class="pos-header">
                     <span class="trade-num">#${i + 1}</span>
                     <span class="exchange ${exClass}">${exchange}</span>
                     <span class="dir ${isLong ? 'long' : 'short'}">${isLong ? 'LONG' : 'SHORT'}</span>
-                    <span class="pnl ${pnlClass}">${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)} USDT</span>
+                    <span class="pos-symbol">${symbol}</span>
+                    <span class="pos-lev">${leverage}x</span>
                 </div>
-                <div class="details">
-                    <span>Entry <span class="val">${fmtPrice(t.open_price)}</span></span>
-                    <span>Exit <span class="val">${fmtPrice(t.close_price)}</span></span>
-                    <span>Lev <span class="val">${leverage}x</span></span>
-                    <span>Hold <span class="val">${t.hold_hours.toFixed(1)}h</span></span>
-                    <span>Open <span class="val">${formatTime(t.open_ms)}</span></span>
-                    <span>Close <span class="val">${formatTime(t.close_ms)}</span></span>
+                <div class="pos-pnl ${pnlClass}">
+                    <span class="pnl-value">${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)} USDT</span>
+                </div>
+                <div class="pos-details">
+                    <div class="pos-detail">
+                        <span class="label">Entry</span>
+                        <span class="val">${fmtPrice(t.open_price)}</span>
+                    </div>
+                    <div class="pos-detail">
+                        <span class="label">Exit</span>
+                        <span class="val">${fmtPrice(t.close_price)}</span>
+                    </div>
+                    <div class="pos-detail">
+                        <span class="label">Hold</span>
+                        <span class="val">${t.hold_hours.toFixed(1)}h</span>
+                    </div>
+                    <div class="pos-detail">
+                        <span class="label">Open</span>
+                        <span class="val">${formatTime(t.open_ms)}</span>
+                    </div>
+                    <div class="pos-detail">
+                        <span class="label">Close</span>
+                        <span class="val">${formatTime(t.close_ms)}</span>
+                    </div>
                 </div>
             </div>`;
         }).reverse().join('');
