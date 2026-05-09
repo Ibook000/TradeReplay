@@ -991,8 +991,11 @@ const App = {
         const isLong = trade.direction === 'long';
         const direction = isLong ? 'LONG' : 'SHORT';
         const leverage = escapeHtml(trade.leverage);
+        const exchange = trade.exchange || '';
+        const exCls = exchange === 'OKX' ? 'okx' : exchange === 'Bybit' ? 'bybit' : exchange === 'Bitget' ? 'bitget' : '';
         el.innerHTML = `
             <span class="info">
+                ${exchange ? `<span class="exchange ${exCls}">${escapeHtml(exchange)}</span>` : ''}
                 <strong>${symbol}</strong>
                 <span class="dir ${isLong ? 'long' : 'short'}">${direction}</span>
                 <span class="header-sep">${leverage}x</span>
