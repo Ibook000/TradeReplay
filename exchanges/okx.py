@@ -175,6 +175,9 @@ async def fetch_okx_positions() -> list[dict]:
                 "margin": round(float(p.get("margin", "0") or "0"), 2),
                 "liquidation_price": float(p.get("liqPx", "0") or "0"),
                 "margin_mode": p.get("mgnMode", "cross"),
+                "take_profit": float(p.get("tpTriggerPx", "0") or "0"),
+                "stop_loss": float(p.get("slTriggerPx", "0") or "0"),
+                "open_ms": int(p.get("cTime", "0") or "0"),
             })
 
         return positions

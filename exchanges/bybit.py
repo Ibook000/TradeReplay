@@ -193,6 +193,9 @@ async def fetch_bybit_positions() -> list[dict]:
                 "margin": round(float(p.get("positionMargin", "0") or "0"), 2),
                 "liquidation_price": float(p.get("liqPrice", "0") or "0"),
                 "margin_mode": p.get("marginMode", "cross"),
+                "take_profit": float(p.get("takeProfit", "0") or "0"),
+                "stop_loss": float(p.get("stopLoss", "0") or "0"),
+                "open_ms": int(p.get("createdTime", "0") or "0"),
             })
 
         return positions

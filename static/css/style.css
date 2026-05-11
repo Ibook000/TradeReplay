@@ -467,38 +467,116 @@ body {
 
 /* ─── Positions Summary ──────────────────────────────────────────────────── */
 .positions-summary {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--sp-1);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     margin-bottom: var(--sp-2);
-    padding: var(--sp-2);
     background: var(--surface-2);
     border-radius: var(--r-md);
     border: 1px solid var(--hairline);
+    overflow: hidden;
+}
+
+.pos-summary-row {
+    display: flex;
+    align-items: stretch;
+}
+
+.pos-summary-row.metrics {
+    border-bottom: 1px solid var(--hairline);
+}
+
+.pos-summary-row.meta {
+    font-size: 10px;
+    flex-direction: column;
 }
 
 .pos-stat {
+    flex: 1;
     text-align: center;
+    padding: 8px 6px;
+    position: relative;
+}
+
+.pos-stat + .pos-stat::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 1px;
+    background: var(--hairline);
 }
 
 .pos-stat .label {
     font-size: 9px;
     color: var(--ink-tertiary);
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.5px;
     font-weight: 500;
+    margin-bottom: 2px;
 }
 
 .pos-stat .value {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 700;
     font-family: var(--font-mono);
-    letter-spacing: -0.2px;
-    margin-top: 2px;
+    letter-spacing: -0.3px;
 }
 
 .pos-stat .value.positive { color: var(--green); }
 .pos-stat .value.negative { color: var(--red); }
+
+.pos-meta-item {
+    flex: 1;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+}
+
+.pos-meta-item + .pos-meta-item::before {
+    content: '';
+    position: absolute;
+    left: 5%;
+    right: 5%;
+    top: 0;
+    height: 1px;
+    background: var(--hairline);
+}
+
+.pos-meta-item .label {
+    font-size: 9px;
+    color: var(--ink-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.pos-meta-item .value {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-subtle);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ex-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 3px;
+    letter-spacing: -0.2px;
+}
+.ex-tag.okx { background: #ffffff10; color: #ffffffb0; }
+.ex-tag.bybit { background: #f7a60014; color: #f7a600cc; }
+.ex-tag.bitget { background: #00d4aa14; color: #00d4aacc; }
 
 /* ─── Position Card (unified with trade-card) ───────────────────────────── */
 .positions-list {

@@ -164,20 +164,63 @@ const App = {
         // Summary stats
         const totalPnl = positions.reduce((s, p) => s + p.unrealized_pnl, 0);
         const totalMargin = positions.reduce((s, p) => s + p.margin, 0);
+        const longCount = positions.filter(p => p.direction === 'long').length;
+        const shortCount = positions.length - longCount;
+        
+        // Exchange breakdown
+        const exCounts = {};
+        positions.forEach(p => { exCounts[p.exchange] = (exCounts[p.exchange] || 0) + 1; });
+        const exParts = Object.entries(exCounts).map(([ex, n]) => {
+            const cls = ex === 'OKX' ? 'okx' : ex === 'Bybit' ? 'bybit' : 'bitget';
+            return `<span class="ex-tag ${cls}">${ex} ${n}</span>`;
+        });
+        
+        // Symbols
+        const symbols = [...new Set(positions.map(p => p.symbol))];
+        
+        // Long/Short breakdown
+        const longSyms = positions.filter(p => p.direction === 'long').map(p => p.symbol);
+        const shortSyms = positions.filter(p => p.direction === 'short').map(p => p.symbol);
         
         let html = `
             <div class="positions-summary">
-                <div class="pos-stat">
-                    <div class="label">Unrealized PnL</div>
-                    <div class="value ${totalPnl >= 0 ? 'positive' : 'negative'}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)} USDT</div>
+                <div class="pos-summary-row metrics">
+                    <div class="pos-stat">
+                        <div class="label">PnL</div>
+                        <div class="value ${totalPnl >= 0 ? 'positive' : 'negative'}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}</div>
+                    </div>
+                    <div class="pos-stat">
+                        <div class="label">Margin</div>
+                        <div class="value">${totalMargin.toFixed(2)}</div>
+                    </div>
+                    <div class="pos-stat">
+                        <div class="label">Positions</div>
+                        <div class="value">${positions.length}</div>
+                    </div>
+                    <div class="pos-stat">
+                        <div class="label">L / S</div>
+                        <div class="value"><span class="positive">${longCount}</span><span style="color:var(--ink-tertiary);margin:0 2px">/</span><span class="negative">${shortCount}</span></div>
+                    </div>
                 </div>
-                <div class="pos-stat">
-                    <div class="label">Total Margin</div>
-                    <div class="value">${totalMargin.toFixed(2)} USDT</div>
+                <div class="pos-summary-row meta">
+                    <div class="pos-meta-item">
+                        <span class="label">Ex</span>
+                        <span class="value">${exParts.join('')}</span>
+                    </div>
+                    <div class="pos-meta-item">
+                        <span class="label">Sym</span>
+                        <span class="value">${symbols.join(' · ')}</span>
+                    </div>
                 </div>
-                <div class="pos-stat">
-                    <div class="label">Positions</div>
-                    <div class="value">${positions.length}</div>
+                <div class="pos-summary-row meta">
+                    <div class="pos-meta-item">
+                        <span class="label">Long</span>
+                        <span class="value positive">${longSyms.length > 0 ? longSyms.join(' · ') : '-'}</span>
+                    </div>
+                    <div class="pos-meta-item">
+                        <span class="label">Short</span>
+                        <span class="value negative">${shortSyms.length > 0 ? shortSyms.join(' · ') : '-'}</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -225,6 +268,18 @@ const App = {
                             <span class="val">${fmtPrice(p.liquidation_price)}</span>
                         </div>
                         ` : ''}
+                        ${p.take_profit > 0 ? `
+                        <div class="pos-detail tp-price">
+                            <span class="label">TP</span>
+                            <span class="val" style="color:#4caf50">${fmtPrice(p.take_profit)}</span>
+                        </div>
+                        ` : ''}
+                        ${p.stop_loss > 0 ? `
+                        <div class="pos-detail sl-price">
+                            <span class="label">SL</span>
+                            <span class="val" style="color:#ff9800">${fmtPrice(p.stop_loss)}</span>
+                        </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -264,6 +319,8 @@ const App = {
                 <span class="header-sep">${p.leverage}x</span>
                 <span class="header-sep">Entry <strong>${fmtPrice(p.entry_price)}</strong></span>
                 <span class="header-sep">Mark <strong>${fmtPrice(p.mark_price)}</strong></span>
+                ${p.take_profit > 0 ? `<span class="header-sep" style="color:#4caf50">TP <strong>${fmtPrice(p.take_profit)}</strong></span>` : ''}
+                ${p.stop_loss > 0 ? `<span class="header-sep" style="color:#ff9800">SL <strong>${fmtPrice(p.stop_loss)}</strong></span>` : ''}
             </span>
             <span class="header-right">
                 <span class="info ${pnlCls}" style="font-weight:600;">${p.unrealized_pnl >= 0 ? '+' : ''}${p.unrealized_pnl.toFixed(2)} USDT</span>
@@ -293,6 +350,20 @@ const App = {
             KlineChart.setDataAdaptive(data.klines);
             KlineChart.clearMarkers();
             KlineChart.clearPriceLines();
+
+            // Entry marker arrow — find candle by open timestamp
+            if (p.open_ms > 0) {
+                const openSec = Math.floor(p.open_ms / 1000);
+                const entryTime = KlineChart._nearestCandleTime(openSec, data.klines);
+                const isLong = p.direction === 'long';
+                KlineChart.setMarkers([{
+                    time: entryTime,
+                    position: isLong ? 'belowBar' : 'aboveBar',
+                    color: isLong ? '#00e676' : '#ff5252',
+                    shape: isLong ? 'arrowUp' : 'arrowDown',
+                    text: `${isLong ? 'LONG' : 'SHORT'} ${p.leverage}x @ ${fmtPrice(p.entry_price)}`,
+                }]);
+            }
 
             // Entry price line
             KlineChart.addPriceLine({
@@ -326,6 +397,30 @@ const App = {
                 });
             }
 
+            // Take Profit line
+            if (p.take_profit > 0) {
+                KlineChart.addPriceLine({
+                    price: p.take_profit,
+                    color: '#4caf50',
+                    lineWidth: 2,
+                    lineStyle: 0,
+                    axisLabelVisible: true,
+                    title: `TP ${fmtPrice(p.take_profit)}`
+                });
+            }
+
+            // Stop Loss line
+            if (p.stop_loss > 0) {
+                KlineChart.addPriceLine({
+                    price: p.stop_loss,
+                    color: '#ff9800',
+                    lineWidth: 2,
+                    lineStyle: 0,
+                    axisLabelVisible: true,
+                    title: `SL ${fmtPrice(p.stop_loss)}`
+                });
+            }
+
         } catch (e) {
             console.error('Failed to load position kline:', e);
         }
@@ -344,6 +439,20 @@ const App = {
             if (!data.klines || data.klines.length === 0) return;
 
             KlineChart.setData(data.klines);
+
+            // Update entry marker
+            if (p.open_ms > 0) {
+                const openSec = Math.floor(p.open_ms / 1000);
+                const entryTime = KlineChart._nearestCandleTime(openSec, data.klines);
+                const isLong = p.direction === 'long';
+                KlineChart.setMarkers([{
+                    time: entryTime,
+                    position: isLong ? 'belowBar' : 'aboveBar',
+                    color: isLong ? '#00e676' : '#ff5252',
+                    shape: isLong ? 'arrowUp' : 'arrowDown',
+                    text: `${isLong ? 'LONG' : 'SHORT'} ${p.leverage}x @ ${fmtPrice(p.entry_price)}`,
+                }]);
+            }
 
             // Update price lines
             KlineChart.clearPriceLines();
@@ -371,6 +480,26 @@ const App = {
                     lineStyle: 1,
                     axisLabelVisible: true,
                     title: `Liq ${fmtPrice(p.liquidation_price)}`
+                });
+            }
+            if (p.take_profit > 0) {
+                KlineChart.addPriceLine({
+                    price: p.take_profit,
+                    color: '#4caf50',
+                    lineWidth: 2,
+                    lineStyle: 0,
+                    axisLabelVisible: true,
+                    title: `TP ${fmtPrice(p.take_profit)}`
+                });
+            }
+            if (p.stop_loss > 0) {
+                KlineChart.addPriceLine({
+                    price: p.stop_loss,
+                    color: '#ff9800',
+                    lineWidth: 2,
+                    lineStyle: 0,
+                    axisLabelVisible: true,
+                    title: `SL ${fmtPrice(p.stop_loss)}`
                 });
             }
         } catch (e) {
