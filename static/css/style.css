@@ -985,6 +985,7 @@ body {
 
 /* ─── Position Analysis Panel ────────────────────────────────────────────── */
 .pos-analysis-panel.open { width: 380px; }
+.pos-history-panel.open { width: 380px; }
 
 .pa-section {
     margin-bottom: var(--sp-4);
@@ -1545,19 +1546,168 @@ body {
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+    /* Layout: stack vertically */
     .app { flex-direction: column; }
     .sidebar {
         width: 100%;
         min-width: 100%;
-        max-height: 45vh;
+        max-height: 50vh;
         border-right: none;
         border-bottom: 1px solid var(--hairline);
+    }
+    .sidebar.collapsed {
+        max-height: 0;
+        min-height: 0;
     }
     .main {
         flex: 1;
         min-height: 0;
     }
     .chart-container { min-height: 200px; }
+
+    /* Sidebar toggle */
+    .sidebar-toggle {
+        left: 50%;
+        top: auto;
+        bottom: 0;
+        transform: translateX(-50%);
+        width: 48px;
+        height: 24px;
+        border-radius: var(--r-sm) var(--r-sm) 0 0;
+        border-bottom: none;
+    }
+    .sidebar.collapsed ~ .sidebar-toggle {
+        left: 50%;
+        top: auto;
+        bottom: auto;
+        top: 0;
+    }
+    .sidebar.collapsed ~ .sidebar-toggle svg {
+        transform: rotate(90deg);
+    }
+
+    /* Header compact */
+    .header {
+        padding: var(--sp-2);
+    }
+    .header-brand {
+        margin-bottom: var(--sp-2);
+    }
+    .brand-logo {
+        width: 28px;
+        height: 28px;
+    }
+    .brand-name {
+        font-size: 12px;
+    }
+    .brand-sub {
+        font-size: 10px;
+    }
+
+    /* View toggle compact */
+    .view-toggle {
+        gap: var(--sp-1);
+        margin-bottom: var(--sp-2);
+    }
+    .view-tab {
+        padding: var(--sp-1) var(--sp-2);
+        font-size: 11px;
+    }
+
+    /* Filters compact */
+    .ticker-select {
+        font-size: 12px;
+        padding: var(--sp-1) var(--sp-2);
+    }
+    .filter-bar {
+        gap: 2px;
+        margin-bottom: var(--sp-1);
+    }
+    .f-select, .f-pill {
+        font-size: 10px;
+        padding: 4px var(--sp-1);
+    }
+
+    /* Trade cards compact */
+    .trade-card {
+        padding: var(--sp-2);
+    }
+    .trade-header {
+        font-size: 11px;
+    }
+    .trade-pnl {
+        font-size: 12px;
+    }
+    .trade-meta {
+        font-size: 10px;
+        gap: var(--sp-1);
+    }
+
+    /* Position cards compact */
+    .positions-summary {
+        padding: var(--sp-2);
+    }
+    .pos-summary-row.metrics {
+        gap: var(--sp-2);
+    }
+    .pos-stat .label {
+        font-size: 9px;
+    }
+    .pos-stat .value {
+        font-size: 12px;
+    }
+    .position-card {
+        padding: var(--sp-2);
+    }
+    .pos-header {
+        font-size: 11px;
+        flex-wrap: wrap;
+        gap: var(--sp-1);
+    }
+    .pos-symbol {
+        font-size: 12px;
+    }
+    .pos-pnl {
+        font-size: 13px;
+    }
+    .pos-details {
+        font-size: 10px;
+        gap: var(--sp-1);
+    }
+
+    /* Chart header compact */
+    .chart-header {
+        padding: var(--sp-2);
+        font-size: 11px;
+        flex-wrap: wrap;
+        gap: var(--sp-1);
+    }
+    .chart-header .info {
+        font-size: 10px;
+    }
+    .header-right {
+        gap: var(--sp-1);
+    }
+    .ai-review-btn, .back-btn {
+        font-size: 10px;
+        padding: 2px var(--sp-1);
+    }
+
+    /* Replay bar compact */
+    .replay-bar {
+        padding: var(--sp-1) var(--sp-2);
+        font-size: 10px;
+    }
+    .replay-btn {
+        font-size: 10px;
+        padding: 2px var(--sp-2);
+    }
+    .replay-speed {
+        font-size: 9px;
+        padding: 2px var(--sp-1);
+    }
+
+    /* Side panels full screen */
     .side-panel {
         position: fixed;
         top: 0;
@@ -1572,5 +1722,74 @@ body {
     .side-panel.open {
         width: 100% !important;
         transform: translateX(0);
+    }
+    .panel-header {
+        padding: var(--sp-2) var(--sp-3);
+    }
+    .panel-header h2 {
+        font-size: 14px;
+    }
+    .panel-content {
+        padding: var(--sp-2);
+    }
+
+    /* Stats panel compact */
+    .stats-grid {
+        gap: var(--sp-2);
+    }
+    .stats-item .label {
+        font-size: 9px;
+    }
+    .stats-item .value {
+        font-size: 12px;
+    }
+
+    /* Monitor toggle button */
+    .monitor-toggle {
+        font-size: 8px !important;
+        padding: 1px 6px !important;
+    }
+}
+
+/* Extra small phones */
+@media (max-width: 380px) {
+    .header-brand {
+        gap: var(--sp-2);
+    }
+    .brand-logo {
+        width: 24px;
+        height: 24px;
+    }
+    .brand-name {
+        font-size: 11px;
+    }
+    .header-badge {
+        font-size: 9px;
+    }
+    .view-tab {
+        font-size: 10px;
+        padding: 2px var(--sp-1);
+    }
+    .ticker-select {
+        font-size: 11px;
+    }
+    .f-select, .f-pill {
+        font-size: 9px;
+        padding: 3px 2px;
+    }
+    .trade-card {
+        padding: var(--sp-1);
+    }
+    .position-card {
+        padding: var(--sp-1);
+    }
+    .pos-header {
+        font-size: 10px;
+    }
+    .pos-pnl {
+        font-size: 11px;
+    }
+    .pos-details {
+        font-size: 9px;
     }
 }

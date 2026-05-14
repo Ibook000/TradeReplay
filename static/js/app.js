@@ -20,6 +20,7 @@ const App = {
     _positionData: [],
     _activePositionIdx: -1,
     _positionKlineTimer: null,
+    _monitorSettings: {},
 
     async init() {
         KlineChart.init(document.getElementById('chart'));
@@ -47,6 +48,7 @@ const App = {
         document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closePanel('settingsPanel'));
         document.getElementById('closeReviewBtn').addEventListener('click', () => this.closePanel('reviewPanel'));
         document.getElementById('closePosAnalysisBtn').addEventListener('click', () => this.closePanel('posAnalysisPanel'));
+        document.getElementById('closePosHistoryBtn').addEventListener('click', () => this.closePanel('posHistoryPanel'));
     },
 
     /**
@@ -135,11 +137,20 @@ const App = {
         }
         
         try {
-            const resp = await fetch('/api/positions');
-            const data = await resp.json();
+            const [posResp, settingsResp] = await Promise.all([
+                fetch('/api/positions'),
+                fetch('/api/monitor_settings')
+            ]);
+            const data = await posResp.json();
             const positions = data.positions || [];
             this._positionData = positions;
-            
+
+            const settingsData = await settingsResp.json();
+            this._monitorSettings = {};
+            (settingsData.settings || []).forEach(s => {
+                this._monitorSettings[s.symbol] = s;
+            });
+
             if (positions.length === 0) {
                 positionsList.innerHTML = '<div class="empty">No open positions</div>';
                 this._activePositionIdx = -1;
@@ -232,6 +243,13 @@ const App = {
             const exClass = p.exchange === 'OKX' ? 'okx' : p.exchange === 'Bybit' ? 'bybit' : 'bitget';
             const pnlPct = p.entry_price > 0 ? ((p.mark_price - p.entry_price) / p.entry_price * 100 * (isLong ? 1 : -1)) : 0;
             const isActive = i === this._activePositionIdx;
+            const sym = p.symbol.replace('/', '-').toUpperCase();
+            const monSetting = this._monitorSettings[sym];
+            const monEnabled = monSetting ? monSetting.enabled : false;
+            const monPaused = monSetting ? monSetting.paused : false;
+            const monState = monEnabled ? (monPaused ? 'paused' : 'active') : 'off';
+            const monColor = monState === 'active' ? '#00c853' : monState === 'paused' ? '#fbbf24' : '#5a5a6e';
+            const monLabel = monState === 'active' ? 'ON' : monState === 'paused' ? 'PAUSE' : 'OFF';
             
             html += `
                 <div class="position-card ${isActive ? 'active' : ''}" data-pos-idx="${i}" onclick="App.selectPosition(${i})">
@@ -240,6 +258,9 @@ const App = {
                         <span class="dir ${isLong ? 'long' : 'short'}">${isLong ? 'LONG' : 'SHORT'}</span>
                         <span class="pos-symbol">${escape(p.symbol)}</span>
                         <span class="pos-lev">${p.leverage}x</span>
+                        <button class="monitor-toggle" data-symbol="${escape(sym)}" onclick="event.stopPropagation(); App.toggleMonitor('${escape(sym)}')" 
+                            style="margin-left:auto;background:${monColor}20;color:${monColor};border:1px solid ${monColor}40;padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;cursor:pointer;letter-spacing:0.5px;"
+                            title="Click to cycle: OFF -> ON -> PAUSE -> OFF">${monLabel}</button>
                     </div>
                     <div class="pos-pnl ${pnlClass}">
                         <span class="pnl-value">${p.unrealized_pnl >= 0 ? '+' : ''}${p.unrealized_pnl.toFixed(2)} USDT</span>
@@ -326,6 +347,7 @@ const App = {
                 <span class="info ${pnlCls}" style="font-weight:600;">${p.unrealized_pnl >= 0 ? '+' : ''}${p.unrealized_pnl.toFixed(2)} USDT</span>
                 <span class="header-live">LIVE</span>
                 <button class="ai-review-btn" id="posAiBtn" onclick="App.analyzePosition()">AI</button>
+                <button class="ai-review-btn" id="posHistoryBtnPos" onclick="App.openPosHistoryPanel()">Pos History</button>
                 <button class="back-btn" onclick="App.backFromPosition()">&larr; Overview</button>
             </span>
         `;
@@ -524,46 +546,129 @@ const App = {
         if (!p) return;
 
         const btn = document.getElementById('posAiBtn');
-        const content = document.getElementById('posAnalysisContent');
+        const result = document.getElementById('posAnalysisResult');
+        const historySection = document.getElementById('posHistorySection');
+        const historyList = document.getElementById('posHistoryList');
 
         // Open dedicated panel
         this.openPosAnalysis();
         btn.disabled = true;
         btn.textContent = '...';
-        content.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Analyzing position...</span></div>';
+        result.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Loading analysis...</span></div>';
+        historySection.style.display = 'none';
 
         try {
-            const resp = await fetch('/api/analyze_position', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    exchange: p.exchange,
-                    symbol: p.symbol,
-                    direction: p.direction,
-                    leverage: p.leverage,
-                    entry_price: p.entry_price,
-                    mark_price: p.mark_price,
-                    size: p.size,
-                    margin: p.margin,
-                    liquidation_price: p.liquidation_price,
-                    unrealized_pnl: p.unrealized_pnl
-                })
-            });
-            const data = await resp.json();
+            // Only load from DB — no real-time AI call
+            const historyResp = await fetch(`/api/position_history?symbol=${encodeURIComponent(p.symbol)}&limit=20`);
+            const histData = await historyResp.json();
 
-            if (data.found) {
-                content.innerHTML = this.renderPositionAnalysis(data.review, p);
+            if (histData.records?.length > 0) {
+                // Show latest analysis
+                const latest = histData.records[0];
+                if (latest.analysis && typeof latest.analysis === 'object') {
+                    result.innerHTML = this.renderPositionAnalysis(JSON.stringify(latest.analysis), p);
+                } else {
+                    result.innerHTML = `<div style="font-size:11px;color:#8a8a9a;padding:12px;">${escapeHtml(latest.summary || 'No analysis data')}</div>`;
+                }
                 btn.textContent = 'Done';
                 btn.classList.add('done');
+
+                // Render history list (all records)
+                historyList.innerHTML = histData.records.map(h => {
+                    const created = h.created_at ? new Date(h.created_at).toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '--';
+                    const score = h.score ?? '--';
+                    const scoreColor = score >= 70 ? '#00c853' : score >= 40 ? '#fbbf24' : '#ff3d3d';
+                    const predSide = h.predicted_side || '';
+                    const predConf = h.predicted_confidence ?? '';
+                    const predBadge = predSide ? `<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:2px;margin-left:6px;${predSide === 'long' ? 'background:rgba(0,200,83,0.15);color:#00c853;' : 'background:rgba(255,61,61,0.15);color:#ff3d3d;'}">${predSide.toUpperCase()} ${predConf}%</span>` : '';
+                    const summary = escapeHtml(h.summary || '');
+                    return `<div class="trade-card ai-history-item" data-id="${h.id}" style="cursor:pointer;padding:6px 10px;margin-bottom:4px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-size:10px;color:#8a8a9a;">${created}</span>
+                            <span style="font-size:10px;font-family:monospace;color:${scoreColor};">${score}</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;margin-top:2px;">
+                            <span style="font-size:10px;color:#8a8a9a;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${summary}</span>
+                            ${predBadge}
+                        </div>
+                    </div>`;
+                }).join('');
+                historyList.querySelectorAll('.ai-history-item').forEach(item => {
+                    item.addEventListener('click', () => this._showPositionHistoryDetail(histData.records, item.dataset.id));
+                });
+                historySection.style.display = 'block';
             } else {
-                content.innerHTML = `<div class="highlight">Error: ${escapeHtml(data.detail || 'Unknown')}</div>`;
-                btn.textContent = 'Retry';
+                const sym = p.symbol.replace('/', '-').toUpperCase();
+                const monSetting = this._monitorSettings[sym];
+                const monEnabled = monSetting ? monSetting.enabled : false;
+                const monPaused = monSetting ? monSetting.paused : false;
+                let msg = 'No analysis yet.';
+                if (!monEnabled) {
+                    msg += ' Monitor is OFF. Click the toggle to enable.';
+                } else if (monPaused) {
+                    msg += ' Monitor is PAUSED. Click the toggle to resume.';
+                } else {
+                    msg += ' Analysis runs every 15 minutes.';
+                }
+                result.innerHTML = `<div style="color:#5a5a6e;text-align:center;padding:20px;">${msg}</div>`;
+                btn.textContent = 'No Data';
             }
         } catch (e) {
-            content.innerHTML = `<div class="highlight">Failed: ${escapeHtml(e.message)}</div>`;
+            result.innerHTML = `<div class="highlight">Failed: ${escapeHtml(e.message)}</div>`;
             btn.textContent = 'Retry';
         }
         btn.disabled = false;
+    },
+
+    _showPositionHistoryDetail(records, id) {
+        const h = records.find(r => String(r.id) === String(id));
+        if (!h) return;
+        const result = document.getElementById('posAnalysisResult');
+        if (h.analysis && typeof h.analysis === 'object') {
+            result.innerHTML = this.renderPositionAnalysis(JSON.stringify(h.analysis), {
+                exchange: h.exchange, symbol: h.symbol, direction: h.direction, leverage: h.leverage
+            });
+        }
+    },
+
+    /**
+     * Toggle monitor state for a symbol: OFF -> ON -> PAUSE -> OFF
+     */
+    async toggleMonitor(symbol) {
+        const current = this._monitorSettings[symbol];
+        const isEnabled = current ? current.enabled : false;
+        const isPaused = current ? current.paused : false;
+
+        let newEnabled, newPaused;
+        if (!isEnabled) {
+            // OFF -> ON
+            newEnabled = true;
+            newPaused = false;
+        } else if (!isPaused) {
+            // ON -> PAUSE
+            newEnabled = true;
+            newPaused = true;
+        } else {
+            // PAUSE -> OFF
+            newEnabled = false;
+            newPaused = false;
+        }
+
+        try {
+            const resp = await fetch('/api/monitor_settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol, enabled: newEnabled, paused: newPaused })
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                this._monitorSettings[symbol] = { symbol, enabled: data.enabled, paused: data.paused };
+                // Re-render to update button state
+                this.renderPositions(this._positionData);
+            }
+        } catch (e) {
+            console.error('Toggle monitor failed:', e);
+        }
     },
 
     /**
@@ -575,6 +680,96 @@ const App = {
         });
         document.getElementById('posAnalysisPanel').classList.add('open');
         setTimeout(() => KlineChart.resize(), 50);
+    },
+
+    /**
+     * Open position analysis history panel
+     * Loads history for the current symbol from either view
+     */
+    async openPosHistoryPanel() {
+        // Close other panels
+        document.querySelectorAll('.side-panel.open').forEach(p => {
+            if (p.id !== 'posHistoryPanel') p.classList.remove('open');
+        });
+        document.getElementById('posHistoryPanel').classList.add('open');
+        setTimeout(() => KlineChart.resize(), 50);
+
+        // Determine current symbol
+        let symbol = this.currentSymbol;
+        if (this.currentView === 'positions' && this._activePositionIdx >= 0) {
+            const p = this._positionData[this._activePositionIdx];
+            if (p) symbol = p.symbol;
+        }
+        if (!symbol) return;
+
+        const loading = document.getElementById('posHistoryLoading');
+        const list = document.getElementById('posHistoryPanelList');
+        loading.style.display = 'flex';
+        list.innerHTML = '';
+
+        try {
+            const resp = await fetch(`/api/position_history?symbol=${encodeURIComponent(symbol)}&limit=30`);
+            const data = await resp.json();
+            loading.style.display = 'none';
+
+            if (!data.records?.length) {
+                list.innerHTML = '<div style="color:#5a5a6e;text-align:center;padding:20px;font-size:11px;">No position analysis history for this symbol.</div>';
+                return;
+            }
+
+            list.innerHTML = data.records.map(h => {
+                const created = h.created_at ? new Date(h.created_at).toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '--';
+                const score = h.score ?? '--';
+                const scoreColor = score >= 70 ? '#00c853' : score >= 40 ? '#fbbf24' : '#ff3d3d';
+                const predSide = h.predicted_side || '';
+                const predConf = h.predicted_confidence ?? '';
+                const predBadge = predSide ? `<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:2px;margin-left:6px;${predSide === 'long' ? 'background:rgba(0,200,83,0.15);color:#00c853;' : 'background:rgba(255,61,61,0.15);color:#ff3d3d;'}">${predSide.toUpperCase()} ${predConf}%</span>` : '';
+                const summary = escapeHtml(h.summary || '');
+                const exTag = h.exchange ? `<span class="exchange ${h.exchange === 'OKX' ? 'okx' : h.exchange === 'Bybit' ? 'bybit' : 'bitget'}" style="font-size:9px;padding:1px 4px;margin-right:4px;">${escapeHtml(h.exchange)}</span>` : '';
+                const dirTag = h.direction ? `<span class="dir ${h.direction}" style="font-size:9px;padding:1px 4px;">${h.direction.toUpperCase()}</span>` : '';
+                return `<div class="trade-card ai-history-item" data-id="${h.id}" style="cursor:pointer;padding:8px 10px;margin-bottom:4px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="display:flex;align-items:center;gap:4px;">${exTag}${dirTag}<span style="font-size:10px;color:#8a8a9a;">${created}</span></span>
+                        <span style="font-size:10px;font-family:monospace;color:${scoreColor};font-weight:600;">${score}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
+                        <span style="font-size:10px;color:#8a8a9a;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${summary}</span>
+                        ${predBadge}
+                    </div>
+                </div>`;
+            }).join('');
+
+            list.querySelectorAll('.ai-history-item').forEach(item => {
+                item.addEventListener('click', () => this._showPosHistoryDetail(data.records, item.dataset.id));
+            });
+        } catch (e) {
+            loading.style.display = 'none';
+            list.innerHTML = `<div style="color:#ff3d3d;text-align:center;padding:20px;font-size:11px;">Failed: ${escapeHtml(e.message)}</div>`;
+        }
+    },
+
+    /**
+     * Show detail of a position analysis history record in posAnalysisPanel
+     */
+    _showPosHistoryDetail(records, id) {
+        const h = records.find(r => String(r.id) === String(id));
+        if (!h) return;
+
+        // Open posAnalysisPanel to show detail
+        document.querySelectorAll('.side-panel.open').forEach(p => {
+            if (p.id !== 'posAnalysisPanel') p.classList.remove('open');
+        });
+        document.getElementById('posAnalysisPanel').classList.add('open');
+        setTimeout(() => KlineChart.resize(), 50);
+
+        const result = document.getElementById('posAnalysisResult');
+        if (h.analysis && typeof h.analysis === 'object') {
+            result.innerHTML = this.renderPositionAnalysis(JSON.stringify(h.analysis), {
+                exchange: h.exchange, symbol: h.symbol, direction: h.direction, leverage: h.leverage
+            });
+        } else {
+            result.innerHTML = `<div style="font-size:11px;color:#8a8a9a;padding:12px;">${escapeHtml(h.summary || 'No analysis data')}</div>`;
+        }
     },
 
     /**
@@ -605,6 +800,27 @@ const App = {
                 </div>
             </div>
         `;
+
+        // Direction Prediction
+        if (d.prediction) {
+            const predSide = d.prediction.side || 'long';
+            const predConf = d.prediction.confidence ?? 0;
+            const predReason = d.prediction.reason || '';
+            const isLong = predSide === 'long';
+            const sideColor = isLong ? '#00c853' : '#ff3d3d';
+            const sideBg = isLong ? 'rgba(0,200,83,0.08)' : 'rgba(255,61,61,0.08)';
+            const confColor = predConf >= 70 ? sideColor : predConf >= 40 ? '#fbbf24' : '#5a5a6e';
+            html += `
+                <div class="pa-section" style="background:${sideBg};border-radius:6px;padding:10px 12px;margin-bottom:10px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:${sideColor};">Direction Prediction</span>
+                        <span style="display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px;background:${sideColor}22;color:${sideColor};">${isLong ? 'LONG' : 'SHORT'}</span>
+                        <span style="font-size:11px;font-weight:600;font-family:monospace;color:${confColor};">${predConf}%</span>
+                    </div>
+                    ${predReason ? `<div style="font-size:11px;color:#8a8a9a;line-height:1.5;">${escape(predReason)}</div>` : ''}
+                </div>
+            `;
+        }
 
         // Trend Analysis
         if (d.trend?.length) {
@@ -1068,7 +1284,10 @@ const App = {
         } catch (e) {
             tradeList.innerHTML = `<div class="empty">Error: ${escapeHtml(e.message)}</div>`;
         }
+
     },
+
+
 
     async loadOverview(days) {
         const data = await API.fetchKlinesRange(days, '1h', this.currentSymbol);
@@ -1135,6 +1354,7 @@ const App = {
             <span class="header-right">
                 <span class="info ${cls}" style="font-weight:600;">${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}</span>
                 <button class="ai-review-btn" id="aiReviewBtn" onclick="App.runTradeReview()">AI Review</button>
+                <button class="ai-review-btn" id="posHistoryBtn" onclick="App.openPosHistoryPanel()">Pos History</button>
                 <button class="replay-trigger" onclick="App.startReplay()">Replay</button>
                 <button class="back-btn" onclick="App.backToOverview()">&larr; Overview</button>
             </span>

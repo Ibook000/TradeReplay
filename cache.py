@@ -262,3 +262,223 @@ def start_weekly_ai_scheduler():
     t = threading.Thread(target=_weekly_ai_loop, daemon=True)
     t.start()
     print("[CACHE] Weekly AI scheduler started (Monday 00:00)", flush=True)
+
+
+# ─── Position Monitor Scheduler (every 15 min) ──────────────────────
+
+POS_MONITOR_INTERVAL = 900  # 15 minutes in seconds
+
+
+def _run_position_analysis(position: dict):
+    """Run AI analysis for a single position and save to DB."""
+    import os
+    import asyncio
+    import httpx
+    import json
+    import time
+    from database import save_position_analysis
+    from klines import fetch_klines
+
+    exchange = position.get("exchange", "")
+    symbol = position.get("symbol", "").replace("/", "-").upper()
+    direction = position.get("direction", "long")
+    leverage = position.get("leverage", 1)
+    entry_price = position.get("entry_price", 0)
+    mark_price = position.get("mark_price", 0)
+    size = position.get("size", 0)
+    margin = position.get("margin", 0)
+    liq_price = position.get("liquidation_price", 0)
+    unrealized_pnl = position.get("unrealized_pnl", 0)
+
+    api_key = os.getenv("AI_API_KEY", "").strip()
+    base_url = os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1").strip().rstrip("/")
+    model = os.getenv("AI_MODEL", "deepseek-chat").strip()
+
+    if not api_key:
+        print(f"[POS-MON] No AI API key, skip {symbol}", flush=True)
+        return
+
+    try:
+        # Fetch K-lines
+        now_ms = int(time.time() * 1000)
+        start_ms = now_ms - 24 * 3600 * 1000
+        loop = asyncio.new_event_loop()
+        klines = loop.run_until_complete(fetch_klines(symbol, "5m", start_ms, now_ms, exchange))
+        loop.close()
+
+        if not klines:
+            print(f"[POS-MON] No K-lines for {symbol}, skip", flush=True)
+            return
+
+        if len(klines) > 48:
+            step = len(klines) // 48
+            klines = klines[::step][:48]
+
+        kline_text = ""
+        for k in klines:
+            ts = k.get("time", 0)
+            from datetime import datetime, timezone, timedelta
+            dt = datetime.fromtimestamp(ts, tz=timezone(timedelta(hours=8)))
+            kline_text += f"  {dt.strftime('%m-%d %H:%M')} O:{k['open']:.4f} H:{k['high']:.4f} L:{k['low']:.4f} C:{k['close']:.4f}\n"
+
+        pnl_pct = 0
+        if entry_price > 0:
+            pnl_pct = (mark_price - entry_price) / entry_price * 100
+            if direction == "short":
+                pnl_pct = -pnl_pct
+
+        prompt = f"""分析以下当前持仓的行情，给出持仓建议，并明确预测下一阶段更偏多还是偏空。
+
+当前持仓信息:
+- 交易所: {exchange}
+- 币种: {symbol}
+- 当前持仓方向: {direction.upper()} {leverage}x
+- 入场价: {entry_price:.4f}
+- 当前标记价: {mark_price:.4f}
+- 浮动盈亏: {unrealized_pnl:+.2f} USDT ({pnl_pct:+.2f}%)
+- 仓位大小: {size}
+- 保证金: {margin:.2f} USDT
+- 强平价: {liq_price:.4f}
+
+最近24小时K线数据 (5分钟, UTC+8):
+{kline_text}
+
+严格按以下JSON格式输出，不要输出任何其他内容:
+{{
+  "summary": "一句话行情判断，20字以内",
+  "score": 0到100的持仓健康度评分(100=非常健康),
+  "prediction": {{
+    "side": "long或short",
+    "confidence": 0到100的整数,
+    "reason": "为什么判断偏多或偏空，引用K线和关键价位，40字以内"
+  }},
+  "trend": [
+    "趋势分析点1，引用具体K线价格，30字以内",
+    "趋势分析点2，30字以内"
+  ],
+  "risks": [
+    {{"text": "风险描述，引用具体价格数据", "severity": "high或medium或low"}},
+    {{"text": "风险描述", "severity": "medium"}}
+  ],
+  "actions": [
+    {{"type": "hold或add或reduce或stoploss", "text": "具体操作建议，包含价格点位", "price": "建议价格或空字符串"}},
+    {{"type": "stoploss", "text": "止损建议", "price": "止损价格"}}
+  ]
+}}
+
+要求:
+1. prediction.side 只能是 long 或 short，必须给方向判断
+2. prediction.confidence 必须是 0-100 整数
+3. trend 2-3条，分析当前K线形态和趋势方向
+4. risks 最多3条，必须包含强平风险评估
+5. actions 2-3条，必须包含明确的操作建议和价格点位
+6. actions.type 只能是 hold/add/reduce/stoploss 四种
+7. 语气犀利直接，引用具体K线价格数据"""
+
+        with httpx.Client(timeout=60.0) as client:
+            resp = client.post(
+                f"{base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": "你是犀利的合约交易教练。必须严格输出合法JSON，不要输出任何其他文本、markdown或代码块标记。"},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 2000
+                }
+            )
+
+        if resp.status_code != 200:
+            print(f"[POS-MON] AI API error for {symbol}: {resp.status_code}", flush=True)
+            return
+
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
+        if raw.startswith("```"):
+            raw = re.sub(r'^```(?:json)?\s*', '', raw)
+            raw = re.sub(r'\s*```$', '', raw)
+
+        try:
+            parsed = json.loads(raw)
+            prediction = parsed.get("prediction") or {}
+            side = str(prediction.get("side", "")).strip().lower()
+            if side not in {"long", "short"}:
+                side = direction if direction in {"long", "short"} else "long"
+            try:
+                confidence = int(prediction.get("confidence", 0))
+            except Exception:
+                confidence = 0
+            confidence = max(0, min(100, confidence))
+            reason = str(prediction.get("reason", "")).strip()
+            parsed["prediction"] = {"side": side, "confidence": confidence, "reason": reason}
+
+            risks = parsed.get("risks") or []
+            risks_text = "; ".join(r.get("text", "") for r in risks if isinstance(r, dict))
+            save_position_analysis({
+                "exchange": exchange, "symbol": symbol, "direction": direction,
+                "entry_price": entry_price, "mark_price": mark_price,
+                "unrealized_pnl": unrealized_pnl, "leverage": leverage,
+                "margin": margin, "liquidation_price": liq_price, "size": size,
+                "score": parsed.get("score"), "summary": parsed.get("summary"),
+                "risks": risks_text,
+                "predicted_side": side,
+                "predicted_confidence": confidence,
+                "prediction_reason": reason,
+                "analysis": parsed,
+            })
+            print(f"[POS-MON] Analysis saved for {symbol} (score={parsed.get('score')})", flush=True)
+        except json.JSONDecodeError:
+            print(f"[POS-MON] Invalid JSON for {symbol}, skip save", flush=True)
+
+    except Exception as e:
+        print(f"[POS-MON] Analysis failed for {symbol}: {e}", flush=True)
+
+
+def _position_monitor_loop():
+    """Background loop that runs position analysis every 15 minutes."""
+    import asyncio
+    while True:
+        time.sleep(POS_MONITOR_INTERVAL)
+        try:
+            from database import get_enabled_monitors, init_monitor_settings_for_symbol
+            from exchanges import get_all_positions
+
+            # Get enabled symbols
+            enabled = get_enabled_monitors()
+            if not enabled:
+                continue
+            enabled_symbols = {r["symbol"].upper() for r in enabled}
+
+            # Get current positions
+            loop = asyncio.new_event_loop()
+            positions = loop.run_until_complete(get_all_positions())
+            loop.close()
+
+            if not positions:
+                continue
+
+            # Auto-register new symbols (disabled by default)
+            for p in positions:
+                sym = p.get("symbol", "").replace("/", "-").upper()
+                init_monitor_settings_for_symbol(sym)
+
+            # Filter to enabled symbols
+            to_analyze = [p for p in positions if p.get("symbol", "").replace("/", "-").upper() in enabled_symbols]
+
+            if not to_analyze:
+                continue
+
+            print(f"[POS-MON] Analyzing {len(to_analyze)} positions: {[p.get('symbol') for p in to_analyze]}", flush=True)
+            for p in to_analyze:
+                _run_position_analysis(p)
+
+        except Exception as e:
+            print(f"[POS-MON] Monitor loop error: {e}", flush=True)
+
+
+def start_position_monitor_scheduler():
+    """Start the position monitor background thread."""
+    t = threading.Thread(target=_position_monitor_loop, daemon=True)
+    t.start()
+    print("[CACHE] Position monitor scheduler started (every 15 min)", flush=True)

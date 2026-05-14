@@ -69,3 +69,44 @@ CREATE TABLE IF NOT EXISTS trade_reviews (
 );
 
 CREATE INDEX IF NOT EXISTS idx_trade_reviews_symbol ON trade_reviews(symbol);
+
+-- Position monitor history (15-minute auto analysis)
+CREATE TABLE IF NOT EXISTS position_analyses (
+    id SERIAL PRIMARY KEY,
+    exchange VARCHAR(16) NOT NULL,
+    symbol VARCHAR(16) NOT NULL,
+    direction VARCHAR(8) NOT NULL,
+    entry_price NUMERIC(20,8),
+    mark_price NUMERIC(20,8),
+    unrealized_pnl NUMERIC(20,8),
+    leverage NUMERIC(10,2),
+    margin NUMERIC(20,8),
+    liquidation_price NUMERIC(20,8),
+    size NUMERIC(20,8),
+    score INT,
+    summary TEXT,
+    risks TEXT,
+    predicted_side VARCHAR(8),
+    predicted_confidence INT,
+    prediction_reason TEXT,
+    analysis JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_pos_analysis_symbol ON position_analyses(symbol, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pos_analysis_time ON position_analyses(created_at DESC);
+
+-- Per-symbol position monitor settings
+CREATE TABLE IF NOT EXISTS position_monitor_settings (
+    symbol VARCHAR(16) PRIMARY KEY,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    paused BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TRIGGER IF EXISTS update_monitor_settings_updated_at ON position_monitor_settings;
+CREATE TRIGGER update_monitor_settings_updated_at
+    BEFORE UPDATE ON position_monitor_settings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();

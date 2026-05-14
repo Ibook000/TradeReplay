@@ -16,9 +16,9 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 import httpx
 
-from cache import get_cached, get_store_count, maybe_refresh, force_refresh, load_from_disk, start_daily_scheduler, start_weekly_ai_scheduler, _run_weekly_ai_analysis
+from cache import get_cached, get_store_count, maybe_refresh, force_refresh, load_from_disk, start_daily_scheduler, start_weekly_ai_scheduler, _run_weekly_ai_analysis, start_position_monitor_scheduler
 from klines import fetch_klines, pick_interval
-from database import get_ai_analysis, save_ai_analysis, get_ai_history, get_trade_review, save_trade_review, get_trades as db_get_trades
+from database import get_ai_analysis, save_ai_analysis, get_ai_history, get_trade_review, save_trade_review, get_trades as db_get_trades, save_position_analysis, get_position_history, get_monitor_settings, upsert_monitor_setting, init_monitor_settings_for_symbol
 
 # ─── App ────────────────────────────────────────────────────────────────
 app = FastAPI(title="Trade Replay")
@@ -40,6 +40,7 @@ app.add_middleware(NoCacheMiddleware)
 load_from_disk()
 start_daily_scheduler()
 start_weekly_ai_scheduler()
+start_position_monitor_scheduler()
 
 
 def _validate_config_value(field: str, value) -> str:
@@ -98,9 +99,14 @@ async def get_positions():
     from exchanges import get_all_positions
     try:
         positions = await get_all_positions()
+        # Auto-register new symbols in monitor settings (disabled by default)
+        for p in positions:
+            sym = p.get("symbol", "").replace("/", "-").upper()
+            if sym:
+                init_monitor_settings_for_symbol(sym)
         return {"positions": positions}
     except Exception as e:
-        print(f"[API] Positions error: {e}")
+        print(f"[API] Positions error: {e}", flush=True)
         return {"positions": [], "error": str(e)}
 
 
@@ -516,12 +522,12 @@ async def analyze_position(request: Request):
         if direction == "short":
             pnl_pct = -pnl_pct
 
-    prompt = f"""分析以下当前持仓的行情，给出持仓建议。
+    prompt = f"""分析以下当前持仓的行情，给出持仓建议，并明确预测下一阶段更偏多还是偏空。
 
 当前持仓信息:
 - 交易所: {exchange}
 - 币种: {symbol}
-- 方向: {direction.upper()} {leverage}x
+- 当前持仓方向: {direction.upper()} {leverage}x
 - 入场价: {entry_price:.4f}
 - 当前标记价: {mark_price:.4f}
 - 浮动盈亏: {unrealized_pnl:+.2f} USDT ({pnl_pct:+.2f}%)
@@ -536,6 +542,11 @@ async def analyze_position(request: Request):
 {{
   "summary": "一句话行情判断，20字以内",
   "score": 0到100的持仓健康度评分(100=非常健康),
+  "prediction": {{
+    "side": "long或short",
+    "confidence": 0到100的整数,
+    "reason": "为什么判断偏多或偏空，引用K线和关键价位，40字以内"
+  }},
   "trend": [
     "趋势分析点1，引用具体K线价格，30字以内",
     "趋势分析点2，30字以内"
@@ -551,11 +562,13 @@ async def analyze_position(request: Request):
 }}
 
 要求:
-1. trend 2-3条，分析当前K线形态和趋势方向
-2. risks 最多3条，必须包含强平风险评估
-3. actions 2-3条，必须包含明确的操作建议和价格点位
-4. actions.type 只能是 hold/add/reduce/stoploss 四种
-5. 语气犀利直接，引用具体K线价格数据"""
+1. prediction.side 只能是 long 或 short，必须给方向判断
+2. prediction.confidence 必须是 0-100 整数
+3. trend 2-3条，分析当前K线形态和趋势方向
+4. risks 最多3条，必须包含强平风险评估
+5. actions 2-3条，必须包含明确的操作建议和价格点位
+6. actions.type 只能是 hold/add/reduce/stoploss 四种
+7. 语气犀利直接，引用具体K线价格数据"""
 
     api_key = os.getenv("AI_API_KEY", "").strip()
     base_url = os.getenv("AI_BASE_URL", "https://api.deepseek.com/v1").strip().rstrip("/")
@@ -591,14 +604,86 @@ async def analyze_position(request: Request):
         # Validate JSON
         try:
             parsed = json.loads(raw)
+            # Normalize prediction
+            prediction = parsed.get("prediction") or {}
+            side = str(prediction.get("side", "")).strip().lower()
+            if side not in {"long", "short"}:
+                side = direction if direction in {"long", "short"} else "long"
+            try:
+                confidence = int(prediction.get("confidence", 0))
+            except Exception:
+                confidence = 0
+            confidence = max(0, min(100, confidence))
+            reason = str(prediction.get("reason", "")).strip()
+            parsed["prediction"] = {"side": side, "confidence": confidence, "reason": reason}
             review_text = json.dumps(parsed, ensure_ascii=False)
         except json.JSONDecodeError:
             review_text = raw
+
+        # Persist to position_analyses
+        if review_text.startswith("{"):
+            try:
+                saved = json.loads(review_text)
+                pred = saved.get("prediction") or {}
+                risks = saved.get("risks") or []
+                risks_text = "; ".join(r.get("text", "") for r in risks if isinstance(r, dict))
+                save_position_analysis({
+                    "exchange": exchange, "symbol": symbol, "direction": direction,
+                    "entry_price": entry_price, "mark_price": mark_price,
+                    "unrealized_pnl": unrealized_pnl, "leverage": leverage,
+                    "margin": margin, "liquidation_price": liq_price, "size": size,
+                    "score": saved.get("score"), "summary": saved.get("summary"),
+                    "risks": risks_text,
+                    "predicted_side": pred.get("side"),
+                    "predicted_confidence": pred.get("confidence"),
+                    "prediction_reason": pred.get("reason"),
+                    "analysis": saved,
+                })
+            except Exception:
+                pass
 
         return {"found": True, "review": review_text}
 
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"AI request failed: {e}")
+
+
+@app.get("/api/position_history")
+async def position_history(symbol: str = Query("", description="Filter by symbol"), limit: int = Query(50, ge=1, le=500)):
+    """Get position monitor history."""
+    records = get_position_history(symbol=symbol, limit=limit)
+    return {"records": records, "count": len(records)}
+
+
+@app.get("/api/monitor_settings")
+async def api_get_monitor_settings():
+    """Get all position monitor settings."""
+    settings = get_monitor_settings()
+    return {"settings": settings}
+
+
+@app.post("/api/monitor_settings")
+async def api_update_monitor_setting(request: Request):
+    """Update a position monitor setting (enable/disable/pause/resume)."""
+    body = await request.json()
+    symbol = body.get("symbol", "").strip().upper().replace("/", "-")
+    enabled = body.get("enabled")
+    paused = body.get("paused")
+
+    if not symbol:
+        raise HTTPException(status_code=400, detail="symbol required")
+    if enabled is None and paused is None:
+        raise HTTPException(status_code=400, detail="enabled or paused required")
+
+    # Get current setting or use defaults
+    current = get_monitor_settings()
+    existing = next((s for s in current if s["symbol"] == symbol), None)
+
+    new_enabled = enabled if enabled is not None else (existing["enabled"] if existing else False)
+    new_paused = paused if paused is not None else (existing["paused"] if existing else False)
+
+    upsert_monitor_setting(symbol, new_enabled, new_paused)
+    return {"status": "ok", "symbol": symbol, "enabled": new_enabled, "paused": new_paused}
 
 
 if __name__ == "__main__":

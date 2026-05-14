@@ -32,6 +32,9 @@ def init_db():
         conn = get_connection()
         with conn.cursor() as cur:
             cur.execute(schema_file.read_text())
+            cur.execute("ALTER TABLE position_analyses ADD COLUMN IF NOT EXISTS predicted_side VARCHAR(8)")
+            cur.execute("ALTER TABLE position_analyses ADD COLUMN IF NOT EXISTS predicted_confidence INT")
+            cur.execute("ALTER TABLE position_analyses ADD COLUMN IF NOT EXISTS prediction_reason TEXT")
         conn.commit()
         print("[DB] Schema initialized", flush=True)
     except Exception as e:
@@ -330,6 +333,178 @@ def get_ai_history(symbol: str = 'ALL', limit: int = 12) -> list[dict]:
     except Exception as e:
         print(f"[DB] AI history error: {e}", flush=True)
         return []
+    finally:
+        if conn:
+            conn.close()
+
+
+def save_position_analysis(record: dict):
+    """Save a position monitor analysis record."""
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO position_analyses
+                    (exchange, symbol, direction, entry_price, mark_price,
+                     unrealized_pnl, leverage, margin, liquidation_price, size,
+                     score, summary, risks, predicted_side, predicted_confidence,
+                     prediction_reason, analysis)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (
+                record.get("exchange", ""),
+                record.get("symbol", ""),
+                record.get("direction", ""),
+                record.get("entry_price"),
+                record.get("mark_price"),
+                record.get("unrealized_pnl"),
+                record.get("leverage"),
+                record.get("margin"),
+                record.get("liquidation_price"),
+                record.get("size"),
+                record.get("score"),
+                record.get("summary"),
+                record.get("risks"),
+                record.get("predicted_side"),
+                record.get("predicted_confidence"),
+                record.get("prediction_reason"),
+                json.dumps(record.get("analysis", {}), ensure_ascii=False),
+            ))
+        conn.commit()
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"[DB] Save position analysis error: {e}", flush=True)
+    finally:
+        if conn:
+            conn.close()
+
+
+def get_position_history(symbol: str = "", limit: int = 50) -> list[dict]:
+    """Get position monitor history, newest first."""
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if symbol:
+                cur.execute("""
+                    SELECT id, exchange, symbol, direction, entry_price, mark_price,
+                           unrealized_pnl, leverage, margin, liquidation_price, size,
+                           score, summary, risks, predicted_side, predicted_confidence,
+                           prediction_reason, analysis, created_at
+                    FROM position_analyses
+                    WHERE symbol = %s
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                """, (symbol.upper(), limit))
+            else:
+                cur.execute("""
+                    SELECT id, exchange, symbol, direction, entry_price, mark_price,
+                           unrealized_pnl, leverage, margin, liquidation_price, size,
+                           score, summary, risks, predicted_side, predicted_confidence,
+                           prediction_reason, analysis, created_at
+                    FROM position_analyses
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                """, (limit,))
+            rows = cur.fetchall()
+            result = []
+            for row in rows:
+                d = dict(row)
+                for k in ('entry_price', 'mark_price', 'unrealized_pnl',
+                           'leverage', 'margin', 'liquidation_price', 'size'):
+                    if d.get(k) is not None:
+                        d[k] = float(d[k])
+                if d.get("analysis") and isinstance(d["analysis"], str):
+                    try:
+                        d["analysis"] = json.loads(d["analysis"])
+                    except Exception:
+                        pass
+                result.append(d)
+            return result
+    except Exception as e:
+        print(f"[DB] Position history error: {e}", flush=True)
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+
+# ─── Position Monitor Settings ────────────────────────────────────────
+
+def get_monitor_settings() -> list[dict]:
+    """Get all position monitor settings."""
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT symbol, enabled, paused, updated_at FROM position_monitor_settings ORDER BY symbol")
+            return [dict(row) for row in cur.fetchall()]
+    except Exception as e:
+        print(f"[DB] Get monitor settings error: {e}", flush=True)
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+
+def upsert_monitor_setting(symbol: str, enabled: bool, paused: bool):
+    """Create or update a monitor setting for a symbol."""
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO position_monitor_settings (symbol, enabled, paused)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (symbol) DO UPDATE SET
+                    enabled = EXCLUDED.enabled,
+                    paused = EXCLUDED.paused
+            """, (symbol.upper(), enabled, paused))
+        conn.commit()
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"[DB] Upsert monitor setting error: {e}", flush=True)
+    finally:
+        if conn:
+            conn.close()
+
+
+def get_enabled_monitors() -> list[dict]:
+    """Get all enabled (not paused) monitor settings."""
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT symbol FROM position_monitor_settings
+                WHERE enabled = TRUE AND paused = FALSE
+            """)
+            return [dict(row) for row in cur.fetchall()]
+    except Exception as e:
+        print(f"[DB] Get enabled monitors error: {e}", flush=True)
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+
+def init_monitor_settings_for_symbol(symbol: str):
+    """Auto-create a monitor setting entry for a new symbol (disabled by default)."""
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO position_monitor_settings (symbol, enabled, paused)
+                VALUES (%s, FALSE, FALSE)
+                ON CONFLICT (symbol) DO NOTHING
+            """, (symbol.upper(),))
+        conn.commit()
+    except Exception as e:
+        if conn:
+            conn.rollback()
     finally:
         if conn:
             conn.close()
